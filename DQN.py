@@ -1,3 +1,5 @@
+import math
+
 import torch.nn as nn
 import torch.nn.functional as F
 import torch
@@ -24,23 +26,42 @@ class hDQN(nn.Module):
         self.params = utilities.params
         super(hDQN, self).__init__()
         env_layer_num = self.params.OBJECT_TYPE_NUM + 1  # +1 for agent layer
-        kernel_size = 4
+        decrease_amount = (self.params.DQN_CONV2_OUT_CHANNEL - 64) // 3
+        # kernel_size = 2
+        # self.conv1 = nn.Conv2d(in_channels=env_layer_num,
+        #                        out_channels=params.DQN_CONV1_OUT_CHANNEL,
+        #                        kernel_size=kernel_size)
+        # self.max_pool = nn.MaxPool2d(kernel_size=3,
+        #                              stride=2)
+        # self.conv2 = nn.Conv2d(in_channels=params.DQN_CONV1_OUT_CHANNEL,
+        #                        out_channels=params.DQN_CONV1_OUT_CHANNEL,
+        #                        kernel_size=3)
+        # self.fc1 = nn.Linear(in_features=params.DQN_CONV1_OUT_CHANNEL,
+        #                      out_features=32)
+        # self.fc2 = nn.Linear(in_features=32 + params.OBJECT_TYPE_NUM,
+        #                      out_features=16)  # +2 for needs
+        # self.fc3 = nn.Linear(16, 8)
+        # self.fc4 = nn.Linear(8, 3)
+
+        kernel_size = 2
         self.conv1 = nn.Conv2d(in_channels=env_layer_num,
                                out_channels=self.params.DQN_CONV1_OUT_CHANNEL,
                                kernel_size=kernel_size)
         self.conv2 = nn.Conv2d(in_channels=self.params.DQN_CONV1_OUT_CHANNEL,
-                               out_channels=self.params.DQN_CONV1_OUT_CHANNEL,
-                               kernel_size=kernel_size-1)
-        self.max_pool = nn.MaxPool2d(kernel_size=kernel_size-2,
-                                     stride=1)
-        self.conv3 = nn.Conv1d(in_channels=self.params.DQN_CONV1_OUT_CHANNEL,
-                               out_channels=self.params.DQN_CONV1_OUT_CHANNEL,
-                               kernel_size=4+self.params.OBJECT_TYPE_NUM)
+                               out_channels=self.params.DQN_CONV2_OUT_CHANNEL,
+                               kernel_size=kernel_size+1)
+        self.max_pool = nn.MaxPool2d(kernel_size=3,
+                                     stride=2)
+        self.conv3 = nn.Conv2d(in_channels=self.params.DQN_CONV2_OUT_CHANNEL,
+                               out_channels=self.params.DQN_CONV2_OUT_CHANNEL,
+                               kernel_size=2)
 
-        self.fc1 = nn.Linear(in_features=self.params.DQN_CONV1_OUT_CHANNEL, #params.DQN_CONV1_OUT_CHANNEL + params.OBJECT_TYPE_NUM,
+        self.fc1 = nn.Linear(in_features=self.params.DQN_CONV2_OUT_CHANNEL+self.params.OBJECT_TYPE_NUM,
+                             out_features=self.params.DQN_CONV2_OUT_CHANNEL-decrease_amount)  # +2 for needs
+        self.fc2 = nn.Linear(in_features=self.params.DQN_CONV2_OUT_CHANNEL-decrease_amount,
+                             out_features=self.params.DQN_CONV2_OUT_CHANNEL - 2*decrease_amount)
+        self.fc3 = nn.Linear(in_features=self.params.DQN_CONV2_OUT_CHANNEL - 2*decrease_amount,
                              out_features=64)
-        # self.fc2 = nn.Linear(in_features=64,
-        #                      out_features=64)  # +2 for needs
         # self.fc3 = nn.Linear(16, 8)
         # self.fc4 = nn.Linear(8, 3)
 
@@ -50,13 +71,14 @@ class hDQN(nn.Module):
         y = F.relu(self.conv1(env_map))
         y = F.relu(self.conv2(y))
         y = F.relu(self.max_pool(y))
-        y = y.flatten(start_dim=2, end_dim=-1)
-        need_map = torch.tile(agent_need.unsqueeze(dim=1),
-                              dims=(1, y.shape[1], 1))
-        y = torch.concat([y, need_map], dim=-1)
         y = F.relu(self.conv3(y))
         y = y.flatten(start_dim=1, end_dim=-1)
-        y = self.fc1(y)
+        # need_map = torch.tile(agent_need.unsqueeze(dim=1),
+        #                       dims=(1, y.shape[1], 1))
+        y = torch.concat([y, agent_need], dim=1)
+        y = F.relu(self.fc1(y))
+        y = F.relu(self.fc2(y))
+        y = self.fc3(y)
         y = y.reshape(batch_size,
                       self.params.HEIGHT,
                       self.params.WIDTH)

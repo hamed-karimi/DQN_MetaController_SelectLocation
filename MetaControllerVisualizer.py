@@ -70,11 +70,6 @@ class MetaControllerVisualizer(Visualizer):
             ax[r, c].invert_yaxis()
             for i in range(self.height):
                 for j in range(self.width):
-                    # ax[r, c].scatter(j, i,
-                    #                  marker='.',
-                    #                  s=40, alpha=0.5,
-                    #                  facecolor='black')
-                    # continue
 
                     shape_map = self.get_object_shape_dictionary(environment=environment)
                     env_map = torch.zeros((1, 1 + self.object_type_num, self.height, self.width))  # +1 for agent layer
@@ -91,10 +86,11 @@ class MetaControllerVisualizer(Visualizer):
                         which_goal[i, j] = shape_map[tuple(goal_location.tolist())]
                         goal_type = torch.where(env_map[0, :, goal_location[0], goal_location[1]])[0].min()
                         goal_type = 2 if goal_type == 0 else goal_type - 1
-
+                        selected_goal_shape = shape_map[tuple(goal_location.tolist())]
+                        size = 10 if selected_goal_shape == '.' else 50
                         ax[r, c].scatter(j, i,
-                                         marker=shape_map[tuple(goal_location.tolist())],
-                                         s=50,
+                                         marker=selected_goal_shape,
+                                         s=size,
                                          alpha=0.4,
                                          facecolor=self.color_options[goal_type])
 
