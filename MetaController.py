@@ -88,8 +88,8 @@ class MetaController:
                 output_values = self.policy_net(env_map, need)
                 object_mask = environment.env_map.sum(dim=1) # Either the agent or an object exists
                 output_values[object_mask == 0] = -math.inf
-                goal_location = torch.where(torch.eq(output_values, output_values.max()))
-                goal_location = torch.as_tensor([goal_location[1:]])
+                goal_location = torch.where(torch.eq(output_values, output_values.max()))  # What if there are two maxes?
+                goal_location = torch.as_tensor([ll[0] for ll in goal_location][1:])
                 # goal_type = torch.where(environment.env_map[0, :, goal_location[0, 0], goal_location[0, 1]])[0]
                 # goal_type -= 1  # first layer is agent layer but goal index starts from 0
 
@@ -130,7 +130,7 @@ class MetaController:
         targetnet_goal_values_of_final_state[final_map_object_mask_batch == 0] = -math.inf
 
         targetnet_max_goal_value = torch.amax(targetnet_goal_values_of_final_state,
-                                              dim=(1, 2)).detach()
+                                              dim=(1, 2)).detach().float()
         goal_values_of_selected_goals = policynet_goal_values_of_initial_state[goal_map_batch == 1]
         expected_goal_values = targetnet_max_goal_value * self.GAMMA + reward_batch
 

@@ -63,7 +63,7 @@ def training_meta_controller():
 
                 goal_reached = agent_reached_goal(environment, goal_map)
 
-                all_actions += 1
+                # all_actions += 1
                 steps += 1
 
                 if goal_reached or steps == params.EPISODE_STEPS:  # or rho >= 0:
@@ -82,8 +82,8 @@ def training_meta_controller():
             at_loss = meta_controller.optimize()
             episode_meta_controller_loss += get_meta_controller_loss(at_loss)
 
-        writer.add_scalar("Meta Controller/Loss", episode_meta_controller_loss / all_actions, episode)
-        writer.add_scalar("Meta Controller/Reward", episode_meta_controller_reward / all_actions, episode)
+        writer.add_scalar("Meta Controller/Loss", episode_meta_controller_loss / params.EPISODE_LEN, episode)
+        writer.add_scalar("Meta Controller/Reward", episode_meta_controller_reward / params.EPISODE_LEN, episode)
 
         if (episode + 1) % params.PRINT_OUTPUT == 0:
             pre_located_objects_location = [[[]]] * params.OBJECT_TYPE_NUM
