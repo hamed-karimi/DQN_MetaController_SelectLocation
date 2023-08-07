@@ -56,14 +56,17 @@ class hDQN(nn.Module):
                                out_channels=self.params.DQN_CONV2_OUT_CHANNEL,
                                kernel_size=2)
 
-        self.fc1 = nn.Linear(in_features=self.params.DQN_CONV2_OUT_CHANNEL+self.params.OBJECT_TYPE_NUM,
-                             out_features=self.params.DQN_CONV2_OUT_CHANNEL-decrease_amount)  # +2 for needs
-        self.fc2 = nn.Linear(in_features=self.params.DQN_CONV2_OUT_CHANNEL-decrease_amount,
+        self.fc1 = nn.Linear(in_features=self.params.DQN_CONV2_OUT_CHANNEL,
+                             out_features=self.params.DQN_CONV2_OUT_CHANNEL)
+
+        self.fc2 = nn.Linear(in_features=self.params.DQN_CONV2_OUT_CHANNEL+self.params.OBJECT_TYPE_NUM, # +2 for needs
+                             out_features=self.params.DQN_CONV2_OUT_CHANNEL - decrease_amount)
+
+        self.fc3 = nn.Linear(in_features=self.params.DQN_CONV2_OUT_CHANNEL - decrease_amount,
                              out_features=self.params.DQN_CONV2_OUT_CHANNEL - 2*decrease_amount)
-        self.fc3 = nn.Linear(in_features=self.params.DQN_CONV2_OUT_CHANNEL - 2*decrease_amount,
+
+        self.fc4 = nn.Linear(in_features=self.params.DQN_CONV2_OUT_CHANNEL - 2*decrease_amount,
                              out_features=64)
-        # self.fc3 = nn.Linear(16, 8)
-        # self.fc4 = nn.Linear(8, 3)
 
     def forward(self, env_map, agent_need):
         batch_size = env_map.shape[0]
@@ -75,10 +78,11 @@ class hDQN(nn.Module):
         y = y.flatten(start_dim=1, end_dim=-1)
         # need_map = torch.tile(agent_need.unsqueeze(dim=1),
         #                       dims=(1, y.shape[1], 1))
-        y = torch.concat([y, agent_need], dim=1)
         y = F.relu(self.fc1(y))
+        y = torch.concat([y, agent_need], dim=1)
         y = F.relu(self.fc2(y))
-        y = self.fc3(y)
+        y = F.relu(self.fc3(y))
+        y = self.fc4(y)
         y = y.reshape(batch_size,
                       self.params.HEIGHT,
                       self.params.WIDTH)

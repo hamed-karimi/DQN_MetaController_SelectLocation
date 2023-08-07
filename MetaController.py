@@ -77,30 +77,31 @@ class MetaController:
         e = random.random()
         all_object_locations = torch.stack(torch.where(environment.env_map[0, 1:, :, :]), dim=1)
         if e < epsilon:  # random (goal or stay)
-            goal_index = torch.randint(low=0, high=all_object_locations.shape[0], size=(1,))
+            # goal_index = torch.randint(low=0, high=all_object_locations.shape[0], size=(1,))
             # goal_type = all_object_locations[goal_index, 0]
-            goal_location = all_object_locations[goal_index, 1:]
-
+            # goal_location = all_object_locations[goal_index, 1:]
+            goal_location = torch.randint(low=0, high=environment.env_map.shape[2], size=(2,))
         else:
             with torch.no_grad():
                 env_map = environment.env_map.clone().to(self.device)
                 need = agent.need.to(self.device)
                 output_values = self.policy_net(env_map, need)
-                object_mask = environment.env_map.sum(dim=1) # Either the agent or an object exists
+                # object_mask = environment.env_map.sum(dim=1) # Either the agent or an object exists
+                object_mask = torch.ones_like(output_values)
                 output_values[object_mask == 0] = -math.inf
-                goal_location = torch.where(torch.eq(output_values, output_values.max()))  # What if there are two maxes?
+                goal_location = torch.where(torch.eq(output_values, output_values.max()))
                 goal_location = torch.as_tensor([ll[0] for ll in goal_location][1:])
                 # goal_type = torch.where(environment.env_map[0, :, goal_location[0, 0], goal_location[0, 1]])[0]
                 # goal_type -= 1  # first layer is agent layer but goal index starts from 0
 
-        goal_map[0, goal_location[0, 0], goal_location[0, 1]] = 1
+        goal_map[0, goal_location[0], goal_location[1]] = 1
         self.steps_done += 1
-        return goal_map, goal_location #, goal_type
+        return goal_map, goal_location  #, goal_type
 
     def save_experience(self, initial_map, initial_need, goal_map, acquired_reward, done, final_map, final_need):
         self.memory.push_experience(initial_map, initial_need, goal_map, acquired_reward, done, final_map, final_need)
-        relu = nn.ReLU()
-        sigmoid = nn.Sigmoid()
+        # relu = nn.ReLU()
+        # sigmoid = nn.Sigmoid()
         # memory_prob = relu(acquired_reward) + 1  # This should be changed to sigmoid
         # memory_prob = .5 if acquired_reward == 0 else 1/abs(acquired_reward)
         memory_prob = 1
@@ -121,12 +122,15 @@ class MetaController:
         reward_batch = torch.cat(batch.reward).to(self.device)
         final_map_batch = torch.cat([batch.final_map[i] for i in range(len(batch.final_map))]).to(self.device)
         final_need_batch = torch.cat([batch.final_need[i] for i in range(len(batch.final_need))]).to(self.device)
-        final_map_object_mask_batch = final_map_batch.sum(dim=1)
+        # final_map_object_mask_batch = final_map_batch.sum(dim=1)
+
 
         policynet_goal_values_of_initial_state = self.policy_net(initial_map_batch,
                                                                  initial_need_batch).to(self.device)
         targetnet_goal_values_of_final_state = self.target_net(final_map_batch,
                                                                final_need_batch).to(self.device)
+
+        final_map_object_mask_batch = torch.ones_like(targetnet_goal_values_of_final_state)
         targetnet_goal_values_of_final_state[final_map_object_mask_batch == 0] = -math.inf
 
         targetnet_max_goal_value = torch.amax(targetnet_goal_values_of_final_state,
