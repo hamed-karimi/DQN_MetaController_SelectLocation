@@ -33,7 +33,7 @@ def training_meta_controller():
     for episode in range(params.META_CONTROLLER_EPISODE_NUM):
         episode_meta_controller_reward = 0
         episode_meta_controller_loss = 0
-        all_actions = 0
+        # all_actions = 0
         pre_located_objects_location = [[[]]] * params.OBJECT_TYPE_NUM
         pre_located_objects_num = torch.zeros((params.OBJECT_TYPE_NUM,), dtype=torch.int32)
         pre_located_agent = [[]]

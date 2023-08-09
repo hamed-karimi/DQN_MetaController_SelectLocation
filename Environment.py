@@ -47,10 +47,10 @@ class Environment:
         return each_type_object_num, object_locations
 
     def init_objects_randomly(self, pre_located_objects_num, pre_located_objects_location):  # pre_located_objects is a list
-        if self.object_type_num == 1:  # for controller
-            self.object_locations = -1 * torch.ones(self.object_type_num, 1, 2, dtype=torch.int32)
-            self.each_type_object_num = [1, 0]
-        elif any(pre_located_objects_num):  # some objects are pre-located
+        # if self.object_type_num == 1:  # for controller
+        #     self.object_locations = -1 * torch.ones(self.object_type_num, 1, 2, dtype=torch.int32)
+        #     self.each_type_object_num = [1, 0]
+        if any(pre_located_objects_num):  # some objects are pre-located
             self.each_type_object_num = pre_located_objects_num
             self.object_locations = -1 * torch.ones(self.object_type_num, max(pre_located_objects_num), 2, dtype=torch.int32)
         else:

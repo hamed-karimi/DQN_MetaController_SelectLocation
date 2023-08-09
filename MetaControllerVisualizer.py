@@ -80,7 +80,7 @@ class MetaControllerVisualizer(Visualizer):
                         output_values = meta_controller.policy_net(env_map.to(self.device),
                                                                    need.unsqueeze(0).to(self.device)).clone()  # 1 * 3
                         object_mask = env_map.sum(dim=1)
-                        output_values[object_mask == 0] = -math.inf
+                        output_values[object_mask < 1] = -math.inf
                         goal_location = torch.where(torch.eq(output_values, output_values.max()))
                         goal_location = torch.as_tensor([ll[0] for ll in goal_location][1:])
                         which_goal[i, j] = shape_map[tuple(goal_location.tolist())]
