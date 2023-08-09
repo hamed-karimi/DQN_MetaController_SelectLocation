@@ -49,41 +49,58 @@ class hDQN(nn.Module):
                                kernel_size=kernel_size)
         self.conv2 = nn.Conv2d(in_channels=self.params.DQN_CONV1_OUT_CHANNEL,
                                out_channels=self.params.DQN_CONV2_OUT_CHANNEL,
-                               kernel_size=kernel_size+1)
-        self.max_pool = nn.MaxPool2d(kernel_size=3,
-                                     stride=2)
+                               kernel_size=kernel_size + 2)
         self.conv3 = nn.Conv2d(in_channels=self.params.DQN_CONV2_OUT_CHANNEL,
                                out_channels=self.params.DQN_CONV2_OUT_CHANNEL,
-                               kernel_size=2)
+                               kernel_size=kernel_size + 2,
+                               stride=2)
+        self.fc1 = nn.Linear(in_features=self.params.DQN_CONV2_OUT_CHANNEL + self.params.OBJECT_TYPE_NUM, # +2 for needs
+                             out_features=46)
 
-        self.fc1 = nn.Linear(in_features=self.params.DQN_CONV2_OUT_CHANNEL,
-                             out_features=self.params.DQN_CONV2_OUT_CHANNEL)
+        self.fc2 = nn.Linear(in_features=46,
+                             out_features=25)
 
-        self.fc2 = nn.Linear(in_features=self.params.DQN_CONV2_OUT_CHANNEL+self.params.OBJECT_TYPE_NUM, # +2 for needs
-                             out_features=self.params.DQN_CONV2_OUT_CHANNEL - decrease_amount)
+        self.fc3 = nn.Linear(in_features=25,
+                             out_features=25)
+        self.fc4 = nn.Linear(in_features=25,
+                             out_features=25)
 
-        self.fc3 = nn.Linear(in_features=self.params.DQN_CONV2_OUT_CHANNEL - decrease_amount,
-                             out_features=self.params.DQN_CONV2_OUT_CHANNEL - 2*decrease_amount)
+        self.deconv1 = nn.ConvTranspose2d(in_channels=1,
+                                          out_channels=1,
+                                          stride=1,
+                                          kernel_size=3)
 
-        self.fc4 = nn.Linear(in_features=self.params.DQN_CONV2_OUT_CHANNEL - 2*decrease_amount,
-                             out_features=64)
+        self.deconv2 = nn.ConvTranspose2d(in_channels=1,
+                                          out_channels=1,
+                                          stride=1,
+                                          kernel_size=2)
 
     def forward(self, env_map, agent_need):
         batch_size = env_map.shape[0]
 
         y = F.relu(self.conv1(env_map))
         y = F.relu(self.conv2(y))
-        y = F.relu(self.max_pool(y))
+        # y = F.relu(self.max_pool(y))
         y = F.relu(self.conv3(y))
+        # y = F.relu(self.conv4(y))
         y = y.flatten(start_dim=1, end_dim=-1)
         # need_map = torch.tile(agent_need.unsqueeze(dim=1),
         #                       dims=(1, y.shape[1], 1))
-        y = F.relu(self.fc1(y))
+        # y = F.relu(self.fc1(y))
         y = torch.concat([y, agent_need], dim=1)
+        y = F.relu(self.fc1(y))
         y = F.relu(self.fc2(y))
+
         y = F.relu(self.fc3(y))
-        y = self.fc4(y)
+        y = F.relu(self.fc4(y))
+
         y = y.reshape(batch_size,
-                      self.params.HEIGHT,
-                      self.params.WIDTH)
+                      int(math.sqrt(y.shape[1])),
+                      int(math.sqrt(y.shape[1]))).unsqueeze(dim=1)
+
+        y = F.relu(self.deconv1(y))
+        y = self.deconv2(y).squeeze(dim=1)
+        # y = y.reshape(batch_size,
+        #               self.params.HEIGHT,
+        #               self.params.WIDTH)
         return y
