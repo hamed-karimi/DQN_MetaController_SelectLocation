@@ -75,8 +75,9 @@ class MetaController:
         epsilon = self.get_linear_epsilon(episode)
         self.epsilon_list.append(epsilon)
         e = random.random()
-        all_object_locations = torch.stack(torch.where(environment.env_map[0, 1:, :, :]), dim=1)
+        all_object_locations = torch.stack(torch.where(environment.env_map[0, :, :, :]), dim=1)
         if e < epsilon:  # random (goal or stay)
+
             goal_index = torch.randint(low=0, high=all_object_locations.shape[0], size=())
             # goal_type = all_object_locations[goal_index, 0]
             goal_location = all_object_locations[goal_index, 1:]

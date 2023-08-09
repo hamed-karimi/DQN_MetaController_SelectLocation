@@ -61,19 +61,19 @@ class hDQN(nn.Module):
                              out_features=25)
 
         self.fc3 = nn.Linear(in_features=25,
-                             out_features=25)
-        self.fc4 = nn.Linear(in_features=25,
-                             out_features=25)
+                             out_features=46)
+        self.fc4 = nn.Linear(in_features=46,
+                             out_features=64)
 
-        self.deconv1 = nn.ConvTranspose2d(in_channels=1,
-                                          out_channels=1,
-                                          stride=1,
-                                          kernel_size=3)
-
-        self.deconv2 = nn.ConvTranspose2d(in_channels=1,
-                                          out_channels=1,
-                                          stride=1,
-                                          kernel_size=2)
+        # self.deconv1 = nn.ConvTranspose2d(in_channels=1,
+        #                                   out_channels=1,
+        #                                   stride=1,
+        #                                   kernel_size=3)
+        #
+        # self.deconv2 = nn.ConvTranspose2d(in_channels=1,
+        #                                   out_channels=1,
+        #                                   stride=1,
+        #                                   kernel_size=2)
 
     def forward(self, env_map, agent_need):
         batch_size = env_map.shape[0]
@@ -94,13 +94,13 @@ class hDQN(nn.Module):
         y = F.relu(self.fc3(y))
         y = F.relu(self.fc4(y))
 
-        y = y.reshape(batch_size,
-                      int(math.sqrt(y.shape[1])),
-                      int(math.sqrt(y.shape[1]))).unsqueeze(dim=1)
-
-        y = F.relu(self.deconv1(y))
-        y = self.deconv2(y).squeeze(dim=1)
         # y = y.reshape(batch_size,
-        #               self.params.HEIGHT,
-        #               self.params.WIDTH)
+        #               int(math.sqrt(y.shape[1])),
+        #               int(math.sqrt(y.shape[1]))).unsqueeze(dim=1)
+        #
+        # y = F.relu(self.deconv1(y))
+        # y = self.deconv2(y).squeeze(dim=1)
+        y = y.reshape(batch_size,
+                      self.params.HEIGHT,
+                      self.params.WIDTH)
         return y
