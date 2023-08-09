@@ -82,7 +82,7 @@ class MetaControllerVisualizer(Visualizer):
                         object_mask = env_map.sum(dim=1)
                         output_values[object_mask == 0] = -math.inf
                         goal_location = torch.where(torch.eq(output_values, output_values.max()))
-                        goal_location = torch.as_tensor(goal_location[1:])
+                        goal_location = torch.as_tensor([ll[0] for ll in goal_location][1:])
                         which_goal[i, j] = shape_map[tuple(goal_location.tolist())]
                         goal_type = torch.where(env_map[0, :, goal_location[0], goal_location[1]])[0].min()
                         goal_type = 2 if goal_type == 0 else goal_type - 1
