@@ -26,7 +26,7 @@ class hDQN(nn.Module):
         self.params = utilities.params
         super(hDQN, self).__init__()
         env_layer_num = self.params.OBJECT_TYPE_NUM + 1  # +1 for agent layer
-        decrease_amount = (self.params.DQN_CONV2_OUT_CHANNEL - 64) // 3
+        # decrease_amount = (self.params.DQN_CONV2_OUT_CHANNEL - 64) // 3
         # kernel_size = 2
         # self.conv1 = nn.Conv2d(in_channels=env_layer_num,
         #                        out_channels=params.DQN_CONV1_OUT_CHANNEL,
@@ -43,17 +43,17 @@ class hDQN(nn.Module):
         # self.fc3 = nn.Linear(16, 8)
         # self.fc4 = nn.Linear(8, 3)
 
-        kernel_size = 3
+        kernel_size = 2
         self.conv1 = nn.Conv2d(in_channels=env_layer_num,
                                out_channels=self.params.DQN_CONV1_OUT_CHANNEL,
                                kernel_size=kernel_size)
         self.conv2 = nn.Conv2d(in_channels=self.params.DQN_CONV1_OUT_CHANNEL,
                                out_channels=self.params.DQN_CONV2_OUT_CHANNEL,
+                               kernel_size=kernel_size + 1)
+        self.conv3 = nn.Conv2d(in_channels=self.params.DQN_CONV2_OUT_CHANNEL,
+                               out_channels=self.params.DQN_CONV2_OUT_CHANNEL,
                                kernel_size=kernel_size + 2)
-        # self.conv3 = nn.Conv2d(in_channels=self.params.DQN_CONV2_OUT_CHANNEL,
-        #                        out_channels=self.params.DQN_CONV2_OUT_CHANNEL,
-        #                        kernel_size=kernel_size + 2,
-        #                        stride=2)
+
         self.fc1 = nn.Linear(in_features=self.params.DQN_CONV2_OUT_CHANNEL*4 + self.params.OBJECT_TYPE_NUM, # +2 for needs
                              out_features=128)
 
@@ -81,7 +81,7 @@ class hDQN(nn.Module):
         y = F.relu(self.conv1(env_map))
         y = F.relu(self.conv2(y))
         # y = F.relu(self.max_pool(y))
-        # y = F.relu(self.conv3(y))
+        y = F.relu(self.conv3(y))
         # y = F.relu(self.conv4(y))
         y = y.flatten(start_dim=1, end_dim=-1)
         # need_map = torch.tile(agent_need.unsqueeze(dim=1),
