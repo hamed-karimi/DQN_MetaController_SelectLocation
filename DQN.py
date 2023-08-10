@@ -55,15 +55,15 @@ class hDQN(nn.Module):
         #                        kernel_size=kernel_size + 2,
         #                        stride=2)
         self.fc1 = nn.Linear(in_features=self.params.DQN_CONV2_OUT_CHANNEL*4 + self.params.OBJECT_TYPE_NUM, # +2 for needs
-                             out_features=64)
+                             out_features=128)
 
-        self.fc2 = nn.Linear(in_features=64,
-                             out_features=32)
+        self.fc2 = nn.Linear(in_features=128,
+                             out_features=86)
 
-        self.fc3 = nn.Linear(in_features=32,
-                             out_features=32)
-        self.fc4 = nn.Linear(in_features=32,
+        self.fc3 = nn.Linear(in_features=86,
                              out_features=64)
+        # self.fc4 = nn.Linear(in_features=32,
+        #                      out_features=64)
 
         # self.deconv1 = nn.ConvTranspose2d(in_channels=1,
         #                                   out_channels=1,
@@ -91,8 +91,8 @@ class hDQN(nn.Module):
         y = F.relu(self.fc1(y))
         y = F.relu(self.fc2(y))
 
-        y = F.relu(self.fc3(y))
-        y = self.fc4(y)
+        y = self.fc3(y)
+        # y = self.fc4(y)
 
         # y = y.reshape(batch_size,
         #               int(math.sqrt(y.shape[1])),

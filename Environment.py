@@ -33,7 +33,8 @@ class Environment:
 
     def get_each_object_type_num_of_appearance(self):
         # e.g., self.few_many_objects : ['few', 'many']
-        few_range = np.array([1, 2])
+        # few_range = np.array([1, 2])
+        few_range = np.array([2])
         many_range = np.array([3, 4, 5])
         ranges = {'few': few_range,
                   'many': many_range}
