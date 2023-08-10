@@ -81,7 +81,8 @@ def training_meta_controller():
             episode_meta_controller_reward += sum(steps_rho)
             at_loss = meta_controller.optimize()
             episode_meta_controller_loss += get_meta_controller_loss(at_loss)
-
+        if episode_meta_controller_loss > 0:
+            meta_controller.lr_scheduler.step()
         writer.add_scalar("Meta Controller/Loss", episode_meta_controller_loss / params.EPISODE_LEN, episode)
         writer.add_scalar("Meta Controller/Reward", episode_meta_controller_reward / params.EPISODE_LEN, episode)
 

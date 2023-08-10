@@ -1,7 +1,7 @@
 import random
 from torch import optim
 import torch
-from State_batch import State_batch
+from torch.optim.lr_scheduler import MultiplicativeLR
 from DQN import hDQN, weights_init_orthogonal
 from ReplayMemory import ReplayMemory
 from collections import namedtuple, deque
@@ -35,7 +35,7 @@ class MetaControllerMemory(ReplayMemory):
 
 class MetaController:
 
-    def __init__(self, batch_size, num_objects, gamma, episode_num, episode_len, memory_capacity,
+    def __init__(self, batch_size, num_objects, gamma, lr_decay, episode_num, episode_len, memory_capacity,
                  rewarded_action_selection_ratio):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.policy_net = hDQN().to(self.device)
@@ -51,6 +51,9 @@ class MetaController:
         self.episode_num = episode_num
         self.episode_len = episode_len
         self.optimizer = optim.RMSprop(self.policy_net.parameters())
+        self.lr_scheduler = MultiplicativeLR(self.optimizer,
+                                             lambda epoch: 1/(1 + lr_decay*epoch),
+                                             last_epoch=- 1, verbose=False)
         self.BATCH_SIZE = batch_size
         self.GAMMA = gamma
         self.batch_size_mul = 3
@@ -97,7 +100,7 @@ class MetaController:
 
         goal_map[0, goal_location[0], goal_location[1]] = 1
         self.steps_done += 1
-        return goal_map, goal_location  #, goal_type
+        return goal_map, goal_location  # , goal_type
 
     def save_experience(self, initial_map, initial_need, goal_map, acquired_reward, done, final_map, final_need):
         self.memory.push_experience(initial_map, initial_need, goal_map, acquired_reward, done, final_map, final_need)
