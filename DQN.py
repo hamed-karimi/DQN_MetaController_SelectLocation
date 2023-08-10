@@ -43,26 +43,26 @@ class hDQN(nn.Module):
         # self.fc3 = nn.Linear(16, 8)
         # self.fc4 = nn.Linear(8, 3)
 
-        kernel_size = 2
+        kernel_size = 3
         self.conv1 = nn.Conv2d(in_channels=env_layer_num,
                                out_channels=self.params.DQN_CONV1_OUT_CHANNEL,
                                kernel_size=kernel_size)
         self.conv2 = nn.Conv2d(in_channels=self.params.DQN_CONV1_OUT_CHANNEL,
                                out_channels=self.params.DQN_CONV2_OUT_CHANNEL,
                                kernel_size=kernel_size + 2)
-        self.conv3 = nn.Conv2d(in_channels=self.params.DQN_CONV2_OUT_CHANNEL,
-                               out_channels=self.params.DQN_CONV2_OUT_CHANNEL,
-                               kernel_size=kernel_size + 2,
-                               stride=2)
-        self.fc1 = nn.Linear(in_features=self.params.DQN_CONV2_OUT_CHANNEL + self.params.OBJECT_TYPE_NUM, # +2 for needs
-                             out_features=46)
+        # self.conv3 = nn.Conv2d(in_channels=self.params.DQN_CONV2_OUT_CHANNEL,
+        #                        out_channels=self.params.DQN_CONV2_OUT_CHANNEL,
+        #                        kernel_size=kernel_size + 2,
+        #                        stride=2)
+        self.fc1 = nn.Linear(in_features=self.params.DQN_CONV2_OUT_CHANNEL*4 + self.params.OBJECT_TYPE_NUM, # +2 for needs
+                             out_features=64)
 
-        self.fc2 = nn.Linear(in_features=46,
-                             out_features=25)
+        self.fc2 = nn.Linear(in_features=64,
+                             out_features=32)
 
-        self.fc3 = nn.Linear(in_features=25,
-                             out_features=46)
-        self.fc4 = nn.Linear(in_features=46,
+        self.fc3 = nn.Linear(in_features=32,
+                             out_features=32)
+        self.fc4 = nn.Linear(in_features=32,
                              out_features=64)
 
         # self.deconv1 = nn.ConvTranspose2d(in_channels=1,
@@ -81,7 +81,7 @@ class hDQN(nn.Module):
         y = F.relu(self.conv1(env_map))
         y = F.relu(self.conv2(y))
         # y = F.relu(self.max_pool(y))
-        y = F.relu(self.conv3(y))
+        # y = F.relu(self.conv3(y))
         # y = F.relu(self.conv4(y))
         y = y.flatten(start_dim=1, end_dim=-1)
         # need_map = torch.tile(agent_need.unsqueeze(dim=1),
@@ -92,7 +92,7 @@ class hDQN(nn.Module):
         y = F.relu(self.fc2(y))
 
         y = F.relu(self.fc3(y))
-        y = F.relu(self.fc4(y))
+        y = self.fc4(y)
 
         # y = y.reshape(batch_size,
         #               int(math.sqrt(y.shape[1])),

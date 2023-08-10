@@ -87,7 +87,7 @@ class MetaController:
                 env_map = environment.env_map.clone().to(self.device)
                 need = agent.need.to(self.device)
                 output_values = self.policy_net(env_map, need)
-                object_mask = environment.env_map.sum(dim=1) # Either the agent or an object exists
+                object_mask = environment.env_map.sum(dim=1)  # Either the agent or an object exists
                 # object_mask = torch.ones_like(output_values)
                 output_values[object_mask < 1] = -math.inf
                 goal_location = torch.where(torch.eq(output_values, output_values.max()))
