@@ -14,14 +14,14 @@ class Agent:
         self.width = w
         self.location = self.initial_location(predefined_location)
         self.num_need = n
-        self.initial_range_of_need = [0, 15]
+        self.initial_range_of_need = [-12, 12]
         self.range_of_need = [-12, 12]
         self.prob_init_needs_equal = prob_init_needs_equal
         self.need = self.set_need(preassigned_needs)
         self.steps_done = 0
         self.EPS_START = 0.9
         self.EPS_END = 0.05
-        self.lambda_need = 1  # How much the need increases after each action
+        self.lambda_need = 1.3  # How much the need increases after each action
         self.lambda_satisfaction = 3
         self.relu = ReLU()
         total_need_functions = {'ReLU': self.relu, 'PolyReLU': self.poly_relu}
