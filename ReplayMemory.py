@@ -42,7 +42,7 @@ class ReplayMemory():
 
         weights = torch.cat([torch.ones_like(torch.as_tensor(self.early_memory_weights, dtype=torch.float)),
                              torch.ones_like(torch.as_tensor(self.later_memory_weights, dtype=torch.float))])
-        # aa = torch.ones_like(self.early_memory_weights, dtype=torch.float)
+
         weights[first_sample_indices] = 0
         sample_indices = torch.multinomial(weights,
                                            num_samples=other_steps_sample_size,

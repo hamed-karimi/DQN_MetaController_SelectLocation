@@ -17,12 +17,6 @@ def training_meta_controller():
     res_folder = utility.make_res_folder(sub_folder='MetaController')
     # utility.save_training_config()
     writer = SummaryWriter()
-    global_index = 0
-    # meta_controller_reward_list = []
-    # meta_controller_reward_sum = 0
-    # meta_controller_loss_list = []
-    # num_goal_selected = [0, 0, 0]  # 0, 1: goals, 2: stay
-    # agent_needs_over_time = np.zeros((params.META_CONTROLLER_EPISODE_NUM * params.EPISODE_LEN, 2), dtype=np.float16)
 
     factory = ObjectFactory(utility)
     controller = factory.get_controller()
@@ -31,6 +25,7 @@ def training_meta_controller():
     environment_initialization_prob_map = np.ones(params.HEIGHT * params.WIDTH) * 100 / (params.HEIGHT * params.WIDTH)
 
     for episode in range(params.META_CONTROLLER_EPISODE_NUM):
+        episode_begin = True
         episode_meta_controller_reward = 0
         episode_meta_controller_loss = 0
         # all_actions = 0
@@ -40,15 +35,22 @@ def training_meta_controller():
         pre_assigned_needs = [[]]
         object_amount_options = ['few', 'many']
         episode_object_amount = [np.random.choice(object_amount_options) for _ in range(params.OBJECT_TYPE_NUM)]
+        # Initialized later in the reached if-statement
+        environment = None
+        agent = None
+
         for goal_selecting_step in range(params.EPISODE_LEN):
             steps = 0
             steps_rho = []
-            agent = factory.get_agent(pre_located_agent,
-                                      pre_assigned_needs)
-            environment = factory.get_environment(episode_object_amount,
-                                                  environment_initialization_prob_map,
-                                                  pre_located_objects_num,
-                                                  pre_located_objects_location)
+            if episode_begin:
+                agent = factory.get_agent(pre_located_agent,
+                                          pre_assigned_needs)
+                environment = factory.get_environment(episode_object_amount,
+                                                      environment_initialization_prob_map,
+                                                      pre_located_objects_num,
+                                                      pre_located_objects_location)
+                episode_begin = False
+
             env_map_0 = environment.env_map.clone()
             need_0 = agent.need.clone()
             goal_map, goal_location = meta_controller.get_goal_map(environment,
@@ -67,8 +69,11 @@ def training_meta_controller():
                 steps += 1
 
                 if goal_reached or steps == params.EPISODE_STEPS:  # or rho >= 0:
-                    meta_controller.save_experience(env_map_0, need_0, goal_map, sum(steps_rho), done,
-                                                    environment.env_map.clone(), agent.need.clone())
+                    # Maybe we should first update the environment then save experience?
+                    # bc there is only one object type, the needs are always negative (it gets reward),
+                    # so it would be hard to distinguish between objects based on distance
+                    # One solution can be to decrease EPISODE_LEN to initialize the needs more frequently
+                    # another can be set the initialize range of needs to be very positive
                     pre_located_objects_location = update_pre_located_objects(environment.object_locations,
                                                                               agent.location,
                                                                               goal_reached)
@@ -76,6 +81,15 @@ def training_meta_controller():
                     pre_located_agent = agent.location.tolist()
                     pre_assigned_needs = agent.need.tolist()
 
+                    agent = factory.get_agent(pre_located_agent,
+                                              pre_assigned_needs)
+
+                    environment = factory.get_environment(episode_object_amount,
+                                                          environment_initialization_prob_map,
+                                                          pre_located_objects_num,
+                                                          pre_located_objects_location)
+                    meta_controller.save_experience(env_map_0, need_0, goal_map, sum(steps_rho), done,
+                                                    environment.env_map.clone(), agent.need.clone())
                     break
 
             episode_meta_controller_reward += sum(steps_rho)

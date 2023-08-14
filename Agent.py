@@ -14,6 +14,7 @@ class Agent:
         self.width = w
         self.location = self.initial_location(predefined_location)
         self.num_need = n
+        self.initial_range_of_need = [0, 15]
         self.range_of_need = [-12, 12]
         self.prob_init_needs_equal = prob_init_needs_equal
         self.need = self.set_need(preassigned_needs)
@@ -43,7 +44,7 @@ class Agent:
                 need[0, 1:] = need[0, 0]
             else:
                 need = torch.rand((1, self.num_need))
-            need = (self.range_of_need[1] - self.range_of_need[0]) * need + self.range_of_need[0]
+            need = (self.initial_range_of_need[1] - self.initial_range_of_need[0]) * need + self.initial_range_of_need[0]
         return need
 
     def initial_location(self, predefined_location): # predefined_location is a list

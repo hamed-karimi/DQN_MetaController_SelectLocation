@@ -36,10 +36,14 @@ class MetaControllerMemory(ReplayMemory):
 class MetaController:
 
     def __init__(self, batch_size, num_objects, gamma, lr_decay, episode_num, episode_len, memory_capacity,
-                 rewarded_action_selection_ratio):
+                 rewarded_action_selection_ratio, pretrained):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.policy_net = hDQN().to(self.device)
-        self.policy_net.apply(weights_init_orthogonal)
+        if pretrained:
+            self.policy_net.load_state_dict(torch.load('./PreTrained/meta_controller_model.pt',
+                                                       map_location=self.device))
+        else:
+            self.policy_net.apply(weights_init_orthogonal)
         self.target_net = hDQN().to(self.device)
         self.target_net.load_state_dict(self.policy_net.state_dict())
         self.memory = MetaControllerMemory(memory_capacity)
