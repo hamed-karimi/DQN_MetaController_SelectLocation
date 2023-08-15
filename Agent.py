@@ -7,7 +7,7 @@ from itertools import product
 
 
 class Agent:
-    def __init__(self, h, w, n, prob_init_needs_equal, predefined_location, preassigned_needs,
+    def __init__(self, h, w, n, lambda_need, prob_init_needs_equal, predefined_location, preassigned_needs,
                  rho_function='ReLU',epsilon_function='Linear'):  # n: number of needs
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.height = h
@@ -21,7 +21,7 @@ class Agent:
         self.steps_done = 0
         self.EPS_START = 0.9
         self.EPS_END = 0.05
-        self.lambda_need = 1.  # How much the need increases after each action
+        self.lambda_need = lambda_need  # How much the need increases after each action
         self.lambda_satisfaction = 3
         self.relu = ReLU()
         total_need_functions = {'ReLU': self.relu, 'PolyReLU': self.poly_relu}
