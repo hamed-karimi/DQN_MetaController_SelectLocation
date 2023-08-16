@@ -38,7 +38,7 @@ class hDQN(nn.Module):
                                out_channels=self.params.DQN_CONV2_OUT_CHANNEL,
                                kernel_size=kernel_size + 2)
 
-        self.batch_norm = nn.BatchNorm1d(num_features=self.params.DQN_CONV2_OUT_CHANNEL*4 + self.params.OBJECT_TYPE_NUM)
+        # self.batch_norm = nn.BatchNorm1d(num_features=self.params.DQN_CONV2_OUT_CHANNEL*4 + self.params.OBJECT_TYPE_NUM)
         self.fc1 = nn.Linear(in_features=self.params.DQN_CONV2_OUT_CHANNEL*4 + self.params.OBJECT_TYPE_NUM, # +2 for needs
                              out_features=128)
         self.fc2 = nn.Linear(in_features=128,
@@ -64,10 +64,10 @@ class hDQN(nn.Module):
 
         y = F.relu(self.conv1(env_map))
         y = F.relu(self.conv2(y))
-        y = self.conv3(y)
+        y = F.relu(self.conv3(y))
         y = y.flatten(start_dim=1, end_dim=-1)
         y = torch.concat([y, agent_need], dim=1)
-        y = F.relu(self.batch_norm(y))
+        # y = self.batch_norm(y)
         y = F.relu(self.fc1(y))
         y = F.relu(self.fc2(y))
 
