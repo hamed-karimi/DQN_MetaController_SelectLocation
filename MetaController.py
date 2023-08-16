@@ -11,8 +11,9 @@ import math
 
 
 class MetaControllerMemory(ReplayMemory):
-    def __init__(self, capacity):
-        super().__init__(capacity=capacity)
+    def __init__(self, capacity, first_steps_sample_ratio):
+        super().__init__(capacity=capacity,
+                         first_steps_sample_ratio=first_steps_sample_ratio)
 
     def get_transition(self, *args):
         Transition = namedtuple('Transition',
@@ -36,7 +37,7 @@ class MetaControllerMemory(ReplayMemory):
 class MetaController:
 
     def __init__(self, batch_size, num_objects, gamma, lr_decay, episode_num, episode_len, memory_capacity,
-                 rewarded_action_selection_ratio, pretrained):
+                 first_steps_sample_ratio, pretrained):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.policy_net = hDQN().to(self.device)
         if pretrained:
@@ -46,8 +47,8 @@ class MetaController:
             self.policy_net.apply(weights_init_orthogonal)
         self.target_net = hDQN().to(self.device)
         self.target_net.load_state_dict(self.policy_net.state_dict())
-        self.memory = MetaControllerMemory(memory_capacity)
-        self.rewarded_action_selection_ratio = rewarded_action_selection_ratio
+        self.memory = MetaControllerMemory(memory_capacity, first_steps_sample_ratio)
+        # self.rewarded_action_selection_ratio = rewarded_action_selection_ratio
         self.object_type_num = num_objects
         self.steps_done = 0
         self.EPS_START = 0.95
@@ -82,7 +83,6 @@ class MetaController:
         e = random.random()
         all_object_locations = torch.stack(torch.where(environment.env_map[0, :, :, :]), dim=1)
         if e < epsilon:  # random (goal or stay)
-
             goal_index = torch.randint(low=0, high=all_object_locations.shape[0], size=())
             goal_location = all_object_locations[goal_index, 1:]
 
