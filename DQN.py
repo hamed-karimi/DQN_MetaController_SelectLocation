@@ -26,22 +26,6 @@ class hDQN(nn.Module):
         self.params = utilities.params
         super(hDQN, self).__init__()
         env_layer_num = self.params.OBJECT_TYPE_NUM + 1  # +1 for agent layer
-        # decrease_amount = (self.params.DQN_CONV2_OUT_CHANNEL - 64) // 3
-        # kernel_size = 2
-        # self.conv1 = nn.Conv2d(in_channels=env_layer_num,
-        #                        out_channels=params.DQN_CONV1_OUT_CHANNEL,
-        #                        kernel_size=kernel_size)
-        # self.max_pool = nn.MaxPool2d(kernel_size=3,
-        #                              stride=2)
-        # self.conv2 = nn.Conv2d(in_channels=params.DQN_CONV1_OUT_CHANNEL,
-        #                        out_channels=params.DQN_CONV1_OUT_CHANNEL,
-        #                        kernel_size=3)
-        # self.fc1 = nn.Linear(in_features=params.DQN_CONV1_OUT_CHANNEL,
-        #                      out_features=32)
-        # self.fc2 = nn.Linear(in_features=32 + params.OBJECT_TYPE_NUM,
-        #                      out_features=16)  # +2 for needs
-        # self.fc3 = nn.Linear(16, 8)
-        # self.fc4 = nn.Linear(8, 3)
 
         kernel_size = 2
         self.conv1 = nn.Conv2d(in_channels=env_layer_num,
@@ -56,7 +40,7 @@ class hDQN(nn.Module):
 
         self.fc1 = nn.Linear(in_features=self.params.DQN_CONV2_OUT_CHANNEL*4 + self.params.OBJECT_TYPE_NUM, # +2 for needs
                              out_features=128)
-
+        self.batch_norm = nn.BatchNorm1d()
         self.fc2 = nn.Linear(in_features=128,
                              out_features=86)
 

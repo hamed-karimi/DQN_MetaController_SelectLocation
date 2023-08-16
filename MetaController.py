@@ -88,6 +88,7 @@ class MetaController:
 
             # goal_location = torch.randint(low=0, high=environment.env_map.shape[2], size=(2,))
         else:
+            self.policy_net.eval()
             with torch.no_grad():
                 env_map = environment.env_map.clone().to(self.device)
                 need = agent.need.to(self.device)
@@ -99,7 +100,6 @@ class MetaController:
                 goal_location = torch.as_tensor([ll[0] for ll in goal_location][1:])
                 # goal_type = torch.where(environment.env_map[0, :, goal_location[0, 0], goal_location[0, 1]])[0]
                 # goal_type -= 1  # first layer is agent layer but goal index starts from 0
-
         goal_map[0, goal_location[0], goal_location[1]] = 1
         self.steps_done += 1
         return goal_map, goal_location  # , goal_type
@@ -122,6 +122,7 @@ class MetaController:
             return float('nan')
         transition_sample = self.memory.sample(self.BATCH_SIZE)
         batch = self.memory.get_transition(*zip(*transition_sample))
+        self.policy_net.train()
 
         initial_map_batch = torch.cat([batch.initial_map[i] for i in range(len(batch.initial_map))]).to(self.device)
         initial_need_batch = torch.cat([batch.initial_need[i] for i in range(len(batch.initial_need))]).to(self.device)
