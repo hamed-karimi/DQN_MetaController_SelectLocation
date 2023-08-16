@@ -15,8 +15,8 @@ def weights_init_orthogonal(m):
     elif classname.find('Linear') != -1:
         init.orthogonal_(m.weight.data, gain=1)
     elif classname.find('BatchNorm') != -1:
-        init.normal(m.weight.data, 1.0, 0.02)
-        init.constant(m.bias.data, 0.0)
+        init.normal_(m.weight.data, 1.0, 0.02)
+        init.constant_(m.bias.data, 0.0)
 
 
 # meta controller network
@@ -38,9 +38,9 @@ class hDQN(nn.Module):
                                out_channels=self.params.DQN_CONV2_OUT_CHANNEL,
                                kernel_size=kernel_size + 2)
 
+        self.batch_norm = nn.BatchNorm1d(num_features=self.params.DQN_CONV2_OUT_CHANNEL*4 + self.params.OBJECT_TYPE_NUM)
         self.fc1 = nn.Linear(in_features=self.params.DQN_CONV2_OUT_CHANNEL*4 + self.params.OBJECT_TYPE_NUM, # +2 for needs
                              out_features=128)
-        self.batch_norm = nn.BatchNorm1d()
         self.fc2 = nn.Linear(in_features=128,
                              out_features=86)
 
@@ -64,26 +64,15 @@ class hDQN(nn.Module):
 
         y = F.relu(self.conv1(env_map))
         y = F.relu(self.conv2(y))
-        # y = F.relu(self.max_pool(y))
-        y = F.relu(self.conv3(y))
-        # y = F.relu(self.conv4(y))
+        y = self.conv3(y)
         y = y.flatten(start_dim=1, end_dim=-1)
-        # need_map = torch.tile(agent_need.unsqueeze(dim=1),
-        #                       dims=(1, y.shape[1], 1))
-        # y = F.relu(self.fc1(y))
         y = torch.concat([y, agent_need], dim=1)
+        y = F.relu(self.batch_norm(y))
         y = F.relu(self.fc1(y))
         y = F.relu(self.fc2(y))
 
         y = self.fc3(y)
-        # y = self.fc4(y)
 
-        # y = y.reshape(batch_size,
-        #               int(math.sqrt(y.shape[1])),
-        #               int(math.sqrt(y.shape[1]))).unsqueeze(dim=1)
-        #
-        # y = F.relu(self.deconv1(y))
-        # y = self.deconv2(y).squeeze(dim=1)
         y = y.reshape(batch_size,
                       self.params.HEIGHT,
                       self.params.WIDTH)
