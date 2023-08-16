@@ -36,7 +36,7 @@ class MetaControllerMemory(ReplayMemory):
 
 class MetaController:
 
-    def __init__(self, batch_size, num_objects, gamma, lr_decay, episode_num, episode_len, memory_capacity,
+    def __init__(self, batch_size, num_objects, gamma, init_lr, lr_decay, episode_num, episode_len, memory_capacity,
                  first_steps_sample_ratio, pretrained):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.policy_net = hDQN().to(self.device)
@@ -55,10 +55,10 @@ class MetaController:
         self.EPS_END = 0.05
         self.episode_num = episode_num
         self.episode_len = episode_len
-        self.optimizer = optim.RMSprop(self.policy_net.parameters(), lr=0.01)
+        self.optimizer = optim.RMSprop(self.policy_net.parameters(), lr=init_lr)
         self.lr_scheduler = MultiplicativeLR(self.optimizer,
                                              lambda epoch: 1/(1 + lr_decay*epoch),
-                                             last_epoch=- 1, verbose=False)
+                                             last_epoch=-1, verbose=False)
         self.BATCH_SIZE = batch_size
         self.GAMMA = gamma
         self.batch_size_mul = 3

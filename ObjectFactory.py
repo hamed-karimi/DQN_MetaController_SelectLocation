@@ -51,6 +51,7 @@ class ObjectFactory:
         meta_controller = MetaController(self.params.META_CONTROLLER_BATCH_SIZE,
                                          self.params.OBJECT_TYPE_NUM,
                                          self.params.GAMMA,
+                                         self.params.INIT_LEARNING_RATE,
                                          self.params.LEARNING_RATE_DECAY,
                                          self.params.META_CONTROLLER_EPISODE_NUM,
                                          self.params.EPISODE_LEN,

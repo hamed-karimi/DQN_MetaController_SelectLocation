@@ -61,7 +61,7 @@ class MetaControllerVisualizer(Visualizer):
         row_num = 5
         col_num = 5
         fig, ax = plt.subplots(row_num, col_num, figsize=(15, 12))
-
+        meta_controller.policy_net.eval()
         for fig_num, need in enumerate(self.needs):
             r = fig_num // col_num
             c = fig_num % col_num
