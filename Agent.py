@@ -72,7 +72,7 @@ class Agent:
         time_past = 1. if at_cost < 1.4 else at_cost
         self.update_need_after_step(time_past)
         last_total_need = self.get_total_need()
-        total_cost = time_past * last_total_need - at_cost
+        total_cost = time_past * last_total_need + at_cost
         environment.update_agent_location_on_map(self)
 
         f, _ = environment.get_reward()
