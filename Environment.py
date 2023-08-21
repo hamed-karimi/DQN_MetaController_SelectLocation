@@ -14,7 +14,7 @@ class Environment:
         self.few_many_objects = few_many_objects
         self.probability_map = probability_map
         self.far_objects_prob = far_objects_prob
-        self.agent_location = agent.get_location()
+        self.agent_location = agent.location
         self.env_map = torch.zeros((1, self.channels, self.height, self.width),
                                    dtype=torch.float32)  # the 1 is for the env_map can be matched with the dimesions of weights (8, 2, 4, 4)
         self.object_locations = None
@@ -116,7 +116,7 @@ class Environment:
     def update_agent_location_on_map(self, agent):
         # This is called by the agent (take_action method) after the action is taken
         self.env_map[0, 0, self.agent_location[0, 0], self.agent_location[0, 1]] = 0
-        self.agent_location = agent.get_location().clone()
+        self.agent_location = agent.location.clone()
         self.env_map[0, 0, self.agent_location[0, 0], self.agent_location[0, 1]] = 1
 
     def get_all_action(self):

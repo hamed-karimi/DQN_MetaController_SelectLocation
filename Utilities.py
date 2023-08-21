@@ -19,7 +19,7 @@ class Utilities:
     #     self.params.LINEAR_IN = self.params.CONV1_OUT
 
     def make_res_folder(self, sub_folder=''):
-        now = datetime.now().strftime("%d-%m-%Y_%H-%M")
+        now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         folder = 'tr{0}'.format(now)
         dirname = os.path.join(folder, sub_folder)
 

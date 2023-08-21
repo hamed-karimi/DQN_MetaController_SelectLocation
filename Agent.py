@@ -52,9 +52,9 @@ class Agent:
             return torch.tensor(predefined_location)
         return torch.from_numpy(np.asarray((np.random.randint(self.height), np.random.randint(self.width)))).unsqueeze(0)
 
-    def update_need_after_step(self):
+    def update_need_after_step(self, time_past):
         for i in range(self.num_need):
-            self.need[0, i] += self.lambda_need
+            self.need[0, i] += (self.lambda_need * time_past)
 
     def update_need_after_reward(self, reward):
         self.need = self.need - reward
@@ -65,22 +65,21 @@ class Agent:
         total_need = self.rho_function(self.need).sum().squeeze()
         return total_need
 
-    def get_location(self):
-        return self.location
-
     def take_action(self, environment, action_id):
         selected_action = environment.allactions[action_id].squeeze()  # to device
         self.location[0, :] += selected_action
         at_cost = environment.get_cost(action_id)
-
-        self.update_need_after_step()
+        time_past = 1. if at_cost < 1.4 else at_cost
+        self.update_need_after_step(time_past)
         last_total_need = self.get_total_need()
-
+        total_cost = time_past * last_total_need - at_cost
         environment.update_agent_location_on_map(self)
+
         f, _ = environment.get_reward()
         self.update_need_after_reward(f)
         at_total_need = self.get_total_need()
         satisfaction = self.relu(last_total_need - at_total_need)
-        rho = (-1) * at_total_need - at_cost + satisfaction * self.lambda_satisfaction
+        # total_cost = (-1) * at_cost * at_total_need - at_cost
+        rho = (-1) * total_cost + satisfaction * self.lambda_satisfaction
         self.total_need = deepcopy(at_total_need)
         return rho.unsqueeze(0), satisfaction
