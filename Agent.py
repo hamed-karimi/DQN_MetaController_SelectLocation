@@ -69,10 +69,10 @@ class Agent:
         selected_action = environment.allactions[action_id].squeeze()  # to device
         self.location[0, :] += selected_action
         at_cost = environment.get_cost(action_id)
-        time_past = 1. if at_cost < 1.4 else at_cost
-        self.update_need_after_step(time_past)
+        time_passed = 1. if at_cost < 1.4 else at_cost
+        self.update_need_after_step(time_passed)
         last_total_need = self.get_total_need()
-        total_cost = time_past * last_total_need + at_cost
+        total_cost = time_passed * last_total_need + at_cost
         environment.update_agent_location_on_map(self)
 
         f, _ = environment.get_reward()
