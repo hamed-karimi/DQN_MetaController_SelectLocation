@@ -42,9 +42,9 @@ class hDQN(nn.Module):
         self.fc1 = nn.Linear(in_features=self.params.DQN_CONV2_OUT_CHANNEL*4 + self.params.OBJECT_TYPE_NUM, # +2 for needs
                              out_features=128)
         self.fc2 = nn.Linear(in_features=128,
-                             out_features=86)
+                             out_features=96)
 
-        self.fc3 = nn.Linear(in_features=86,
+        self.fc3 = nn.Linear(in_features=96,
                              out_features=64)
         # self.fc4 = nn.Linear(in_features=32,
         #                      out_features=64)

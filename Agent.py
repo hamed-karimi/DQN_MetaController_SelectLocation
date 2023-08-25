@@ -23,6 +23,7 @@ class Agent:
         self.EPS_END = 0.05
         self.lambda_need = lambda_need  # How much the need increases after each action
         self.lambda_satisfaction = 3
+        self.lambda_cost = 2
         self.relu = ReLU()
         total_need_functions = {'ReLU': self.relu, 'PolyReLU': self.poly_relu}
         self.rho_function = total_need_functions[rho_function]
@@ -72,7 +73,7 @@ class Agent:
         time_passed = 1. if at_cost < 1.4 else at_cost
         self.update_need_after_step(time_passed)
         last_total_need = self.get_total_need()
-        total_cost = time_passed * last_total_need + at_cost
+        total_cost = time_passed * last_total_need + self.lambda_cost * at_cost
         environment.update_agent_location_on_map(self)
 
         f, _ = environment.get_reward()
