@@ -23,7 +23,7 @@ class Agent:
         self.EPS_END = 0.05
         self.lambda_need = lambda_need  # How much the need increases after each action
         self.lambda_satisfaction = 3
-        self.lambda_cost = 2
+        self.lambda_cost = 3
         self.relu = ReLU()
         total_need_functions = {'ReLU': self.relu, 'PolyReLU': self.poly_relu}
         self.rho_function = total_need_functions[rho_function]

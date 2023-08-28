@@ -37,14 +37,16 @@ class hDQN(nn.Module):
         self.conv3 = nn.Conv2d(in_channels=self.params.DQN_CONV2_OUT_CHANNEL,
                                out_channels=self.params.DQN_CONV2_OUT_CHANNEL,
                                kernel_size=kernel_size + 2)
-
-        # self.batch_norm = nn.BatchNorm1d(num_features=self.params.DQN_CONV2_OUT_CHANNEL*4 + self.params.OBJECT_TYPE_NUM)
         self.fc1 = nn.Linear(in_features=self.params.DQN_CONV2_OUT_CHANNEL*4 + self.params.OBJECT_TYPE_NUM, # +2 for needs
-                             out_features=128)
-        self.fc2 = nn.Linear(in_features=128,
-                             out_features=96)
+                             out_features=350)
 
-        self.fc3 = nn.Linear(in_features=96,
+        self.fc2 = nn.Linear(in_features=350,
+                             out_features=256)
+
+        self.fc3 = nn.Linear(in_features=256,
+                             out_features=128)
+
+        self.fc4 = nn.Linear(in_features=128,
                              out_features=64)
         # self.fc4 = nn.Linear(in_features=32,
         #                      out_features=64)
@@ -70,8 +72,8 @@ class hDQN(nn.Module):
         # y = self.batch_norm(y)
         y = F.relu(self.fc1(y))
         y = F.relu(self.fc2(y))
-
-        y = self.fc3(y)
+        y = F.relu(self.fc3(y))
+        y = self.fc4(y)
 
         y = y.reshape(batch_size,
                       self.params.HEIGHT,
