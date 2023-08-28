@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from torch.nn import ReLU
+from torch.nn import ReLU, Sigmoid
 import random
 from copy import deepcopy
 from itertools import product
@@ -57,8 +57,21 @@ class Agent:
         for i in range(self.num_need):
             self.need[0, i] += (self.lambda_need * time_past)
 
+    def reward_function(self, need):
+        x = need.clone()
+        sigmoid = Sigmoid()
+        pos = self.relu(x)
+        neg = (torch.pow(1.1, x)-1) * 7
+        neg[x > 0] = 0
+        return pos + neg
+        # positive_part = torch.minimum(reward, self.relu(self.need))
+        # negative_part = sig_lin(self.need) - sig_lin(self.need - reward)
+        # return sig_lin(positive_part) + abs(negative_part)
+
     def update_need_after_reward(self, reward):
-        self.need = self.need - reward
+        adjusted_reward = self.reward_function(self.need) - self.reward_function(self.need - reward)
+        self.need = self.need - adjusted_reward
+        # self.need = self.need - reward
         for i in range(self.num_need):
             self.need[0, i] = max(self.need[0, i], -12)
 
