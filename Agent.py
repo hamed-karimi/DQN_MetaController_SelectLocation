@@ -70,11 +70,11 @@ class Agent:
         # return sig_lin(positive_part) + abs(negative_part)
 
     def update_need_after_reward(self, reward):
-        adjusted_reward = self.reward_function(self.need) - self.reward_function(self.need - reward)
-        self.need = self.need - adjusted_reward
-        # self.need = self.need - reward
+        # adjusted_reward = self.reward_function(self.need) - self.reward_function(self.need - reward)
+        # self.need = self.need - adjusted_reward
+        self.need = self.need - reward
         for i in range(self.num_need):
-            self.need[0, i] = max(self.need[0, i], -12)
+            self.need[0, i] = max(self.need[0, i], -10)
 
     def get_total_need(self):
         total_need = self.rho_function(self.need).sum().squeeze()
