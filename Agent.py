@@ -22,7 +22,7 @@ class Agent:
         self.EPS_START = 0.9
         self.EPS_END = 0.05
         self.lambda_need = lambda_need  # How much the need increases after each action
-        self.lambda_satisfaction = 3
+        self.lambda_satisfaction = 1
         self.lambda_cost = 2
         self.no_reward_threshold = -5
         self.relu = ReLU()
