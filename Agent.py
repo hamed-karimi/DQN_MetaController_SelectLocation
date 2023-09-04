@@ -24,6 +24,7 @@ class Agent:
         self.lambda_need = lambda_need  # How much the need increases after each action
         self.lambda_satisfaction = 3
         self.lambda_cost = 2
+        self.no_reward_threshold = -5
         self.relu = ReLU()
         total_need_functions = {'ReLU': self.relu, 'PolyReLU': self.poly_relu}
         self.rho_function = total_need_functions[rho_function]
@@ -59,19 +60,22 @@ class Agent:
 
     def reward_function(self, need):
         x = need.clone()
-        sigmoid = Sigmoid()
         pos = self.relu(x)
         neg = (torch.pow(1.1, x)-1) * 7
         neg[x > 0] = 0
+        neg[x < self.no_reward_threshold] = (pow(1.1, self.no_reward_threshold) - 1) * 7
         return pos + neg
         # positive_part = torch.minimum(reward, self.relu(self.need))
         # negative_part = sig_lin(self.need) - sig_lin(self.need - reward)
         # return sig_lin(positive_part) + abs(negative_part)
 
     def update_need_after_reward(self, reward):
-        # adjusted_reward = self.reward_function(self.need) - self.reward_function(self.need - reward)
-        # self.need = self.need - adjusted_reward
-        self.need = self.need - reward
+        for i in range(self.num_need):
+            if self.need[0, i] < self.no_reward_threshold:
+                reward[0, i] = 0
+        adjusted_reward = self.reward_function(self.need) - self.reward_function(self.need - reward)
+        self.need = self.need - adjusted_reward
+        # self.need = self.need - reward
         for i in range(self.num_need):
             self.need[0, i] = max(self.need[0, i], -10)
 
