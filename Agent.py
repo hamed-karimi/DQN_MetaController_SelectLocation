@@ -85,9 +85,11 @@ class Agent:
         self.location[0, :] += selected_action
         at_cost = environment.get_cost(action_id)
         time_passed = 1. if at_cost < 1.4 else at_cost
+        carried_total_need = self.get_total_need()
+        total_cost = time_passed * carried_total_need + self.lambda_cost * at_cost
+
         self.update_need_after_step(time_passed)
         last_total_need = self.get_total_need()
-        total_cost = time_passed * last_total_need + self.lambda_cost * at_cost
         environment.update_agent_location_on_map(self)
 
         f, _ = environment.get_reward()
@@ -96,5 +98,5 @@ class Agent:
         satisfaction = self.relu(last_total_need - at_total_need)
         # total_cost = (-1) * at_cost * at_total_need - at_cost
         rho = (-1) * total_cost + satisfaction * self.lambda_satisfaction
-        self.total_need = deepcopy(at_total_need)
+        # self.total_need = deepcopy(at_total_need)
         return rho.unsqueeze(0), satisfaction
