@@ -81,21 +81,26 @@ class Agent:
         return total_need
 
     def take_action(self, environment, action_id):
+        # Consider this for a change: the needs cost is NOT the carried need,
+        # and is the need you end up with after the action
+
         selected_action = environment.allactions[action_id].squeeze()  # to device
         self.location[0, :] += selected_action
         at_cost = environment.get_cost(action_id)
-        time_passed = 1. if at_cost < 1.4 else at_cost
-        carried_total_need = self.get_total_need()
+        # time_passed = 1. if at_cost < 1.4 else at_cost
+        time_passed = 1
+        # carried_total_need = self.get_total_need()
         moving_cost = self.lambda_cost * at_cost
-        needs_cost = time_passed * carried_total_need
+        # needs_cost = time_passed * carried_total_need
 
+        environment.update_agent_location_on_map(self)
         self.update_need_after_step(time_passed)
         last_total_need = self.get_total_need()
-        environment.update_agent_location_on_map(self)
 
         f, _ = environment.get_reward()
         self.update_need_after_reward(f)
         at_total_need = self.get_total_need()
+        needs_cost = at_total_need
         satisfaction = self.relu(last_total_need - at_total_need)
         # total_cost = (-1) * at_cost * at_total_need - at_cost
         # rho = (-1) * total_cost + satisfaction * self.lambda_satisfaction
