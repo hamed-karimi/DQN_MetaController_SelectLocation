@@ -41,7 +41,10 @@ def training_meta_controller():
 
         for goal_selecting_step in range(params.EPISODE_LEN):
             steps = 0
-            steps_rho = []
+            # steps_rho = []
+            step_satisfactions = []
+            step_moving_costs = []
+            step_needs_costs = []
             if episode_begin:
                 agent = factory.get_agent(pre_located_agent,
                                           pre_assigned_needs)
@@ -60,12 +63,15 @@ def training_meta_controller():
             while True:
                 agent_goal_map_0 = torch.stack([environment.env_map[:, 0, :, :], goal_map], dim=1)
                 action_id = controller.get_action(agent_goal_map_0).clone()
-                rho, satisfaction = agent.take_action(environment, action_id)
-                steps_rho.append(rho)
+                satisfaction, moving_cost, needs_cost = agent.take_action(environment, action_id)
+                step_satisfactions.append(satisfaction)
+                step_moving_costs.append(moving_cost)
+                step_needs_costs.append(needs_cost)
+
+                # steps_rho.append(rho)
 
                 goal_reached = agent_reached_goal(environment, goal_map)
 
-                # all_actions += 1
                 steps += 1
 
                 if goal_reached or steps == params.EPISODE_STEPS:  # or rho >= 0:
@@ -88,11 +94,19 @@ def training_meta_controller():
                                                           environment_initialization_prob_map,
                                                           pre_located_objects_num,
                                                           pre_located_objects_location)
-                    meta_controller.save_experience(env_map_0, need_0, goal_map, sum(steps_rho), done,
+                    satisfaction_tensor = torch.tensor(step_satisfactions)
+                    moving_cost_tensor = torch.tensor(step_moving_costs)
+                    all_but_last_positive_reward = satisfaction_tensor[:-1][satisfaction_tensor[:-1] > 0].sum().unsqueeze(dim=0)
+
+                    needs_cost_tensor = torch.tensor(step_needs_costs)
+                    reward = satisfaction_tensor[-1] + all_but_last_positive_reward + \
+                             (-1) * needs_cost_tensor[-1] + (-1) * moving_cost_tensor.sum()
+
+                    meta_controller.save_experience(env_map_0, need_0, goal_map, reward, done,
                                                     environment.env_map.clone(), agent.need.clone())
                     break
 
-            episode_meta_controller_reward += sum(steps_rho)
+            episode_meta_controller_reward += reward
             at_loss = meta_controller.optimize()
             episode_meta_controller_loss += get_meta_controller_loss(at_loss)
         if episode_meta_controller_loss > 0:

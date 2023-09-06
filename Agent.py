@@ -23,7 +23,7 @@ class Agent:
         self.EPS_END = 0.05
         self.lambda_need = lambda_need  # How much the need increases after each action
         self.lambda_satisfaction = 3
-        self.lambda_cost = 2
+        self.lambda_cost = 1
         self.no_reward_threshold = -5
         self.relu = ReLU()
         total_need_functions = {'ReLU': self.relu, 'PolyReLU': self.poly_relu}
@@ -86,7 +86,8 @@ class Agent:
         at_cost = environment.get_cost(action_id)
         time_passed = 1. if at_cost < 1.4 else at_cost
         carried_total_need = self.get_total_need()
-        total_cost = time_passed * carried_total_need + self.lambda_cost * at_cost
+        moving_cost = self.lambda_cost * at_cost
+        needs_cost = time_passed * carried_total_need
 
         self.update_need_after_step(time_passed)
         last_total_need = self.get_total_need()
@@ -97,6 +98,6 @@ class Agent:
         at_total_need = self.get_total_need()
         satisfaction = self.relu(last_total_need - at_total_need)
         # total_cost = (-1) * at_cost * at_total_need - at_cost
-        rho = (-1) * total_cost + satisfaction * self.lambda_satisfaction
-        # self.total_need = deepcopy(at_total_need)
-        return rho.unsqueeze(0), satisfaction
+        # rho = (-1) * total_cost + satisfaction * self.lambda_satisfaction
+        # return rho.unsqueeze(0), satisfaction
+        return satisfaction, moving_cost, needs_cost
