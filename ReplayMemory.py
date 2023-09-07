@@ -1,6 +1,7 @@
 import math
 from collections import deque
 import random
+from datetime import datetime
 import numpy as np
 import torch
 
@@ -36,8 +37,17 @@ class ReplayMemory():
         # else:
         #     self.later_memory_weights.append(kwargs['selection_ratio'])
 
+    def weighted_sample_without_replacement(self, k, rng=random):
+        v = [rng.random() ** (1 / w) for w in self.weights]
+        order = sorted(range(len(self.memory)), key=lambda i: v[i])
+        return [self.memory[i] for i in order[-k:]]
+
     def sample(self, size):
-        return random.choices(self.memory, weights=self.weights, k=size)
+        # return random.choices(self.memory, weights=self.weights, k=size)
+        sample = self.weighted_sample_without_replacement(k=size)
+        return sample
+
+
 
         # first_steps_sample_size = math.floor(size * self.first_steps_sample_ratio)
         # other_steps_sample_size = size - first_steps_sample_size

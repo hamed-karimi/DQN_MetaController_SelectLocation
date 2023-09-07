@@ -96,13 +96,13 @@ def training_meta_controller():
                                                           pre_located_objects_location)
                     satisfaction_tensor = torch.tensor(step_satisfactions)
                     moving_cost_tensor = torch.tensor(step_moving_costs)
-                    all_but_last_positive_reward = satisfaction_tensor[:-1][satisfaction_tensor[:-1] > 0].sum().unsqueeze(dim=0)
 
+                    # all_but_last_positive_reward = satisfaction_tensor[:-1][satisfaction_tensor[:-1] > 0].sum().unsqueeze(dim=0)
+                    #
                     needs_cost_tensor = torch.tensor(step_needs_costs)
-                    reward = satisfaction_tensor[-1] + all_but_last_positive_reward + \
-                             (-1) * needs_cost_tensor[-1] + (-1) * moving_cost_tensor.sum()
-
-                    meta_controller.save_experience(env_map_0, need_0, goal_map, reward, done,
+                    reward = satisfaction_tensor[-1] - needs_cost_tensor[-1] - moving_cost_tensor.sum()
+                    # reward = satisfaction_tensor.sum() - moving_cost_tensor.sum() - needs_cost_tensor.sum()
+                    meta_controller.save_experience(env_map_0, need_0, goal_map, reward.unsqueeze(dim=0), done,
                                                     environment.env_map.clone(), agent.need.clone())
                     break
 
