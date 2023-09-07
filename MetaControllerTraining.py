@@ -100,7 +100,12 @@ def training_meta_controller():
                     # all_but_last_positive_reward = satisfaction_tensor[:-1][satisfaction_tensor[:-1] > 0].sum().unsqueeze(dim=0)
                     #
                     needs_cost_tensor = torch.tensor(step_needs_costs)
-                    reward = satisfaction_tensor[-1] - needs_cost_tensor[-1] - moving_cost_tensor.sum()
+                    # discounted_satisfaction = torch.cumprod(torch.ones(satisfaction_tensor.shape[0]-1) * params.RETROSPECTIVE_DISCOUNTING,
+                    #                                         dim=0)
+                    # discount_factors = torch.cat([torch.ones(1), discounted_satisfaction]).flip(dims=(0, ))
+                    # discounted_satisfaction = discount_factors * (torch.ones(discount_factors.shape) * satisfaction_tensor[-1])
+                    reward = satisfaction_tensor[-1] - needs_cost_tensor.sum() - moving_cost_tensor.sum()
+                    # reward = discounted_satisfaction.sum() - needs_cost_tensor.sum() - moving_cost_tensor.sum()
                     # reward = satisfaction_tensor.sum() - moving_cost_tensor.sum() - needs_cost_tensor.sum()
                     meta_controller.save_experience(env_map_0, need_0, goal_map, reward.unsqueeze(dim=0), done,
                                                     environment.env_map.clone(), agent.need.clone())
