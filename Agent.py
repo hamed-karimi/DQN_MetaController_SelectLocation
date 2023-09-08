@@ -14,7 +14,7 @@ class Agent:
         self.width = w
         self.location = self.initial_location(predefined_location)
         self.num_need = n
-        self.initial_range_of_need = [-20, 20]
+        self.initial_range_of_need = [-12, 12]
         self.range_of_need = [-12, 12]
         self.prob_init_needs_equal = prob_init_needs_equal
         self.need = self.set_need(preassigned_needs)
