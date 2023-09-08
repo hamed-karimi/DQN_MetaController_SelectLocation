@@ -14,7 +14,7 @@ class Agent:
         self.width = w
         self.location = self.initial_location(predefined_location)
         self.num_need = n
-        self.initial_range_of_need = [-12, 20]
+        self.initial_range_of_need = [-20, 20]
         self.range_of_need = [-12, 12]
         self.prob_init_needs_equal = prob_init_needs_equal
         self.need = self.set_need(preassigned_needs)
@@ -22,7 +22,7 @@ class Agent:
         self.EPS_START = 0.9
         self.EPS_END = 0.05
         self.lambda_need = lambda_need  # How much the need increases after each action
-        self.lambda_satisfaction = 3
+        self.lambda_satisfaction = 4
         self.lambda_cost = 1
         self.no_reward_threshold = -5
         self.relu = ReLU()
