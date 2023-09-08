@@ -77,8 +77,8 @@ class Agent:
         # for i in range(self.num_need):
         #     self.need[0, i] = max(self.need[0, i], -10)
 
-    def get_positive_needs(self):
-        total_need = self.rho_function(self.need)  # .sum().squeeze()
+    def get_total_need(self):
+        total_need = self.rho_function(self.need).sum().squeeze()
         return total_need
 
     def take_action(self, environment, action_id):
@@ -88,23 +88,23 @@ class Agent:
         selected_action = environment.allactions[action_id].squeeze()  # to device
         self.location[0, :] += selected_action
         at_cost = environment.get_cost(action_id)
-        # time_passed = 1. if at_cost < 1.4 else at_cost
-        time_passed = 1
-        # carried_total_need = self.get_total_need()
+        time_passed = 1. if at_cost < 1.4 else at_cost
+        # time_passed = 1
+        carried_total_need = self.get_total_need()
         moving_cost = self.lambda_cost * at_cost
-        # needs_cost = time_passed * carried_total_need
+        needs_cost = time_passed * carried_total_need
 
         environment.update_agent_location_on_map(self)
         self.update_need_after_step(time_passed)
-        last_total_need = self.get_positive_needs().sum().squeeze()
+        last_total_need = self.get_total_need()
 
         f, _ = environment.get_reward()
         self.update_need_after_reward(f)
-        at_needs = self.get_positive_needs()
-        needs_cost = at_needs
-        at_total_need = at_needs.sum().squeeze()
+        at_total_need = self.get_total_need()
+        # needs_cost = at_needs
+        # at_total_need = at_needs
         satisfaction = self.relu(last_total_need - at_total_need) * self.lambda_satisfaction
         # total_cost = (-1) * at_cost * at_total_need - at_cost
         # rho = (-1) * total_cost + satisfaction * self.lambda_satisfaction
         # return rho.unsqueeze(0), satisfaction
-        return satisfaction, moving_cost, needs_cost.sum().squeeze()
+        return satisfaction, moving_cost, needs_cost
