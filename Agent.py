@@ -24,7 +24,7 @@ class Agent:
         self.lambda_need = lambda_need  # How much the need increases after each action
         self.lambda_satisfaction = 3
         self.lambda_cost = 1
-        self.no_reward_threshold = -10
+        self.no_reward_threshold = -5
         self.relu = ReLU()
         total_need_functions = {'ReLU': self.relu, 'PolyReLU': self.poly_relu}
         self.rho_function = total_need_functions[rho_function]
