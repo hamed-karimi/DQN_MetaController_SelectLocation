@@ -17,7 +17,7 @@ class MetaControllerMemory(ReplayMemory):
 
     def get_transition(self, *args):
         Transition = namedtuple('Transition',
-                                ('initial_map', 'initial_need', 'goal_map', 'reward', 'done', 'final_map',
+                                ('initial_map', 'initial_need', 'goal_map', 'reward', 'done', 'dt', 'final_map',
                                  'final_need'))
         return Transition(*args)
 
@@ -108,8 +108,8 @@ class MetaController:
         self.steps_done += 1
         return goal_map, goal_location  # , goal_type
 
-    def save_experience(self, initial_map, initial_need, goal_map, acquired_reward, done, final_map, final_need):
-        self.memory.push_experience(initial_map, initial_need, goal_map, acquired_reward, done, final_map, final_need)
+    def save_experience(self, initial_map, initial_need, goal_map, acquired_reward, done, dt, final_map, final_need):
+        self.memory.push_experience(initial_map, initial_need, goal_map, acquired_reward, done, dt, final_map, final_need)
         # relu = nn.ReLU()
         # sigmoid = nn.Sigmoid()
         # memory_prob = sigmoid(acquired_reward) + .1
@@ -132,6 +132,7 @@ class MetaController:
         initial_need_batch = torch.cat([batch.initial_need[i] for i in range(len(batch.initial_need))]).to(self.device)
         goal_map_batch = torch.cat(batch.goal_map).to(self.device)
         reward_batch = torch.cat(batch.reward).to(self.device)
+        time_batch = torch.cat(batch.dt).to(self.device)
         final_map_batch = torch.cat([batch.final_map[i] for i in range(len(batch.final_map))]).to(self.device)
         final_need_batch = torch.cat([batch.final_need[i] for i in range(len(batch.final_need))]).to(self.device)
         final_map_object_mask_batch = final_map_batch.sum(dim=1)
@@ -147,7 +148,7 @@ class MetaController:
         targetnet_max_goal_value = torch.amax(targetnet_goal_values_of_final_state,
                                               dim=(1, 2)).detach().float()
         goal_values_of_selected_goals = policynet_goal_values_of_initial_state[goal_map_batch == 1]
-        expected_goal_values = targetnet_max_goal_value * self.GAMMA + reward_batch
+        expected_goal_values = targetnet_max_goal_value * (self.GAMMA ** time_batch) + reward_batch
 
         criterion = nn.SmoothL1Loss()
         loss = criterion(goal_values_of_selected_goals, expected_goal_values)

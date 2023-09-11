@@ -20,7 +20,8 @@ class ObjectFactory:
                       prob_init_needs_equal=self.params.PROB_OF_INIT_NEEDS_EQUAL, predefined_location=pre_location,
                       rho_function=self.params.RHO_FUNCTION,
                       epsilon_function=self.params.EPSILON_FUNCTION,
-                      preassigned_needs=preassigned_needs)
+                      preassigned_needs=preassigned_needs,
+                      lambda_satisfaction=self.params.LAMBDA_SATISFACTION)
         self.agent = deepcopy(agent)
         return agent
 

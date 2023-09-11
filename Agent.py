@@ -7,8 +7,9 @@ from itertools import product
 
 
 class Agent:
-    def __init__(self, h, w, n, lambda_need, prob_init_needs_equal, predefined_location, preassigned_needs,
-                 rho_function='ReLU',epsilon_function='Linear'):  # n: number of needs
+    def __init__(self, h, w, n, lambda_need, prob_init_needs_equal, predefined_location,
+                 preassigned_needs, lambda_satisfaction,
+                 rho_function='ReLU', epsilon_function='Linear'):  # n: number of needs
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.height = h
         self.width = w
@@ -22,7 +23,7 @@ class Agent:
         self.EPS_START = 0.9
         self.EPS_END = 0.05
         self.lambda_need = lambda_need  # How much the need increases after each action
-        self.lambda_satisfaction = 4
+        self.lambda_satisfaction = lambda_satisfaction
         self.lambda_cost = 1
         self.no_reward_threshold = -5
         self.relu = ReLU()

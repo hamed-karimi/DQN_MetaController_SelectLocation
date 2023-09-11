@@ -104,14 +104,18 @@ def training_meta_controller():
                     #                                         dim=0)
                     # discount_factors = torch.cat([torch.ones(1), discounted_satisfaction]).flip(dims=(0, ))
                     # discounted_satisfaction = discount_factors * (torch.ones(discount_factors.shape) * satisfaction_tensor[-1])
-                    reward = satisfaction_tensor[-1] - needs_cost_tensor.sum() - moving_cost_tensor.sum()
+                    # reward = satisfaction_tensor[-1] - needs_cost_tensor.sum() - moving_cost_tensor.sum()
+                    dt = torch.tensor([satisfaction_tensor.shape[0]])
+                    steps_rewards = satisfaction_tensor - needs_cost_tensor - moving_cost_tensor
+                    steps_discounts = torch.cumprod(torch.ones(dt.item()) * params.GAMMA, dim=0).flip(dims=(0,))
+                    discounted_reward = (steps_rewards * steps_discounts).sum()
                     # reward = discounted_satisfaction.sum() - needs_cost_tensor.sum() - moving_cost_tensor.sum()
                     # reward = satisfaction_tensor.sum() - moving_cost_tensor.sum() - needs_cost_tensor.sum()
-                    meta_controller.save_experience(env_map_0, need_0, goal_map, reward.unsqueeze(dim=0), done,
+                    meta_controller.save_experience(env_map_0, need_0, goal_map, discounted_reward.unsqueeze(dim=0), done, dt,
                                                     environment.env_map.clone(), agent.need.clone())
                     break
 
-            episode_meta_controller_reward += reward
+            episode_meta_controller_reward += discounted_reward
             at_loss = meta_controller.optimize()
             episode_meta_controller_loss += get_meta_controller_loss(at_loss)
         if episode_meta_controller_loss > 0:
