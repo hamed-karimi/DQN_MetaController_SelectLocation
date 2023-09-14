@@ -106,7 +106,7 @@ def training_meta_controller():
                 meta_controller.save_experience(env_map_0, need_0, goal_map, discounted_reward, done,
                                                 dt, environment.env_map.clone(), agent.need.clone())
 
-                if goal_reached or steps == params.EPISODE_LEN:
+                if goal_reached or steps == params.EPISODE_STEPS:
                     break
 
             episode_meta_controller_reward += discounted_reward
