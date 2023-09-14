@@ -70,7 +70,6 @@ class MetaControllerVisualizer(Visualizer):
             ax[r, c].invert_yaxis()
             for i in range(self.height):
                 for j in range(self.width):
-
                     shape_map = self.get_object_shape_dictionary(environment=environment)
                     env_map = torch.zeros((1, 1 + self.object_type_num, self.height, self.width))  # +1 for agent layer
                     env_map[0, 0, i, j] = 1
@@ -126,42 +125,70 @@ class MetaControllerVisualizer(Visualizer):
         # ax[r, c].set_box_aspect(aspect=1)
         return ax, r, c + 1
 
-    def policynet_values(self, object_locations, object_layers, meta_controller):
-        num_object = object_locations.shape[0]
-        row_num = 5
-        col_num = 5
-        fig, ax = plt.subplots(row_num, col_num, figsize=(15, 12))
-        for fig_num, need in enumerate(self.needs):
-            goals_values_text = []
-            for i in range(self.height):
-                row_table_texts = []
-                for j in range(self.width):
-                    env_map = torch.zeros((1, 1 + num_object, self.height, self.width))  # +1 for agent layer
-                    env_map[0, 0, i, j] = 1
-                    env_map[0, 1:, :, :] = deepcopy(object_layers)
-                    with torch.no_grad():
-                        state = State_batch(env_map.to(self.device), need.unsqueeze(0).to(self.device))
-                        goals_values = meta_controller.policy_net(state).clone()  # 1 * 3
-                        row_table_texts.append(
-                            '\n'.join([str(round(goals_values[0, v].item(), 2)) for v in range(num_object + 1)]))
-                goals_values_text.append(row_table_texts)
+    def policynet_values(self, environment, meta_controller):
+        all_needs = torch.arange(-10, 11, 2) #  torch.tensor([-10, -5, 0, 5, 10])
+        meta_controller.policy_net.eval()
+        goal_type_num = environment.object_type_num + 1  # +1 for staying
+        each_goal_type_num = environment.each_type_object_num + [1]
+        for i in range(environment.height):
+            for j in range(environment.width):
+                row_num = goal_type_num
+                col_num = max(max(each_goal_type_num), 2)
+                fig, ax = plt.subplots(row_num, col_num, figsize=(22, 12))
+                # shape_map = self.get_object_shape_dictionary(environment=environment)
+                env_map = torch.zeros((1, 1 + self.object_type_num, self.height, self.width))  # +1 for agent layer
+                env_map[0, 0, i, j] = 1
+                env_map[0, 1:, :, :] = deepcopy(environment.env_map[0, 1:, :, :])
+                # shape_map[(i, j)] = '.'  # Staying
+                output_values = torch.zeros(all_needs.shape[0],
+                                            all_needs.shape[0],
+                                            environment.height,
+                                            environment.width)
+                with torch.no_grad():
+                    for n1 in range(all_needs.shape[0]):
+                        for n2 in range(all_needs.shape[0]):
+                            need1 = all_needs[n1]
+                            need2 = all_needs[n2]
+                            need = torch.tensor([[need1, need2]])
+                            output_values[n1, n2, :, :] = meta_controller.policy_net(env_map.to(self.device),
+                                                                                     need.to(
+                                                                                         self.device)).clone()  # 1 * 3
+                            object_mask = env_map.sum(dim=1).squeeze()
+                            output_values[n1, n2][object_mask < 1] = -math.inf
+                r, c = -1, -1
+                for goal_type in range(goal_type_num):
+                    for goal in range(each_goal_type_num[goal_type]):
+                        r = goal_type
+                        c = goal
+                        x = i if goal_type == goal_type_num-1 else environment.object_locations[goal_type, goal, 0]
+                        y = j if goal_type == goal_type_num-1 else environment.object_locations[goal_type, goal, 1]
+                        values = output_values[:, :, x, y]
+                        rounded = [['%.2f' % elem for elem in row] for row in values.tolist()]
+                        values_table = ax[r, c].table(cellText=rounded,
+                                                      rowLabels=all_needs.tolist(),
+                                                      colLabels=all_needs.tolist(),
+                                                      colWidths=[.1 for i in range(values.shape[1])],
+                                                      loc='center',
+                                                      colLoc='right')
+                        values_table.auto_set_font_size(False)
+                        values_table.set_fontsize(6.5)
+                        # values_table.scale(1, 2)
+                        ax[r, c].set_title('agent: ({0}, {1}), object: {2} - ({3}, {4})'.format(i, j, self.objects_color_name[goal_type], x, y),
+                                           fontsize=10)
+                        ax[r, c].axis('off')
+                for goal_type in range(goal_type_num):
+                    start_col = each_goal_type_num[goal_type] if goal_type != goal_type_num-1 else 2
+                    for empty_goal in range(start_col, col_num):
+                        if empty_goal == col_num:
+                            continue
+                        ax[goal_type, empty_goal].axis('off')
+                self.map_to_image(agent_location= torch.tensor([[i, j]]),
+                                  environment=environment,
+                                  ax=ax[r, c+1])
 
-            r = fig_num // col_num
-            c = fig_num % col_num
-
-            values_table = ax[r, c].table(cellText=goals_values_text,
-                                          rowLabels=np.arange(self.height),
-                                          colLabels=np.arange(self.width),
-                                          # colWidths=1,
-                                          loc='center')
-            values_table.auto_set_font_size(False)
-            values_table.set_fontsize(8)
-            values_table.scale(1, 2)
-            ax[r, c].set_title(self.get_figure_title(need), fontsize=10)
-            ax[r, c].axis('off')
-
-        plt.tight_layout(pad=0.1, w_pad=1, h_pad=1)
-        return fig, ax
+                yield fig, ax, 'qvalues_agent_{0}_{1}'.format(i, j)
+            # for i in range(self.height):
+            #     for j in range(self.width):
 
     def add_needs_difference_hist(self, ax, agent_needs, needs_range, global_index, r, c):
         ax[r, c].set_prop_cycle('color', self.color_options)
@@ -171,3 +198,31 @@ class MetaControllerVisualizer(Visualizer):
         ax[r, c].tick_params(axis='both', which='major', labelsize=9)
         ax[r, c].set_title('Needs', fontsize=9)
         return ax, r, c + 1
+
+    def map_to_image(self, agent_location, environment, ax):
+
+        # agent_location = environment.agent_location
+        objects_location = environment.object_locations
+
+        # fig, ax = plt.subplots(figsize=(15, 10))
+        arrows_x = np.zeros((self.height, self.width))
+        arrows_y = np.zeros((self.height, self.width))
+
+        Xs = np.arange(0, self.height, 1)
+        Ys = np.arange(0, self.width, 1)
+
+        ax.quiver(Xs, Ys, arrows_x, arrows_y, scale=10)
+        # ax.set_title("$n_{{red}}: {:.2f}, n_{{green}}: {:.2f}$".format(agent.need[0, 0], agent.need[0, 1]), fontsize=20)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.invert_yaxis()
+        for obj_type in range(objects_location.shape[0]):
+            for obj in range(environment.each_type_object_num[obj_type]):
+                ax.scatter(objects_location[obj_type, obj, 1],
+                           objects_location[obj_type, obj, 0],
+                           marker='*', s=500, facecolor=self.color_options[obj_type])
+        ax.set_box_aspect(aspect=1)
+
+        ax.scatter(agent_location[0, 1], agent_location[0, 0], s=380, facecolors='b', edgecolors='k')
+        plt.tight_layout(pad=0.4, w_pad=1, h_pad=1)
+        # return ax

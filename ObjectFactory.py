@@ -48,7 +48,7 @@ class ObjectFactory:
         self.controller = deepcopy(controller)
         return controller
 
-    def get_meta_controller(self):
+    def get_meta_controller(self, trained_path):
         meta_controller = MetaController(self.params.META_CONTROLLER_BATCH_SIZE,
                                          self.params.OBJECT_TYPE_NUM,
                                          self.params.GAMMA,
@@ -58,7 +58,7 @@ class ObjectFactory:
                                          self.params.EPISODE_LEN,
                                          self.params.META_CONTROLLER_MEMORY_CAPACITY,
                                          self.params.FIRST_STEP_SAMPLING_RATIO,
-                                         self.params.PRETRAINED_META_CONTROLLER)
+                                         trained_path=trained_path)
         self.meta_controller = deepcopy(meta_controller)
         return meta_controller
 

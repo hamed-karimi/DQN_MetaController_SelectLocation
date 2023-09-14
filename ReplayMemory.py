@@ -8,8 +8,13 @@ import torch
 
 class ReplayMemory():
     def __init__(self, capacity, first_steps_sample_ratio):
-        self.memory = deque([], maxlen=capacity)
-        self.weights = deque([], maxlen=capacity)
+        # self.memory = deque([], maxlen=capacity)
+        # self.weights = deque([], maxlen=capacity)
+        self.max_len = capacity
+        self.memory_size = 0
+        self.weights_size = 0
+        self.memory = np.zeros((self.max_len, ), dtype=object)
+        self.weights = np.zeros((self.max_len, ), dtype=np.float)
 
         # self.early_memory = deque([], maxlen=capacity//2)
         # self.later_memory = deque([], maxlen=capacity//2)
@@ -24,23 +29,43 @@ class ReplayMemory():
         pass
 
     def push_experience(self, *args):
-        self.memory.append(self.get_transition(*args))
+        if self.memory_size == self.max_len:
+            self.memory[:-1] = self.memory[1:]
+            self.memory[-1] = self.get_transition(*args)
+        else:
+            self.memory[self.memory_size] = self.get_transition(*args)
+            self.memory_size += 1
+
+        # self.memory.append(self.get_transition(*args))
+
         # if len(self.early_memory) < self.early_memory.maxlen:
         #     self.early_memory.append(self.get_transition(*args))
         # else:
         #     self.later_memory.append(self.get_transition(*args))
 
     def push_selection_ratio(self, **kwargs):
-        self.weights.append(kwargs['selection_ratio'])
+        if self.weights_size == self.max_len:
+            self.weights[:-1] = self.weights[1:]
+            self.weights[-1] = kwargs['selection_ratio']
+        else:
+            self.weights[self.weights_size] = kwargs['selection_ratio']
+            self.weights_size += 1
+        # self.weights.append(kwargs['selection_ratio'])
+
         # if len(self.early_memory) < self.early_memory.maxlen:
         #     self.early_memory_weights.append(kwargs['selection_ratio'])
         # else:
         #     self.later_memory_weights.append(kwargs['selection_ratio'])
 
     def weighted_sample_without_replacement(self, k, rng=random):
-        v = [rng.random() ** (1 / w) for w in self.weights]
-        order = sorted(range(len(self.memory)), key=lambda i: v[i])
-        return [self.memory[i] for i in order[-k:]]
+        sample = np.random.choice(self.memory[:self.memory_size],
+                                  size=k,
+                                  replace=False,
+                                  p=np.exp(self.weights[:self.memory_size]) / sum(np.exp(self.weights[:self.memory_size])))
+        return sample
+        # v = [rng.random() ** (1 / w) for w in self.weights]
+        # order = sorted(range(len(self.memory)), key=lambda i: v[i])
+        # return [self.memory[i] for i in order[-k:]]
 
     def sample(self, size):
         # return random.choices(self.memory, weights=self.weights, k=size)
@@ -73,5 +98,6 @@ class ReplayMemory():
         # return first_samples+early_samples+later_samples
 
     def __len__(self):
-        return len(self.memory)
+        return self.memory_size
+        # return len(self.memory)
         # return len(self.early_memory) + len(self.later_memory)
