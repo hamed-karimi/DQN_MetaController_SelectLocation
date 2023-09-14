@@ -45,7 +45,10 @@ class hDQN(nn.Module):
         # self.fc2 = nn.Linear(in_features=350,
         #                      out_features=256)
 
-        self.fc3 = nn.Linear(in_features=256+ self.params.OBJECT_TYPE_NUM,
+        self.fc2 = nn.Linear(in_features=256+ self.params.OBJECT_TYPE_NUM,
+                             out_features=192)
+
+        self.fc3 = nn.Linear(in_features=192,
                              out_features=128)
 
         self.fc4 = nn.Linear(in_features=128,
@@ -73,8 +76,8 @@ class hDQN(nn.Module):
         # y = torch.concat([y, agent_need], dim=1)
         # y = self.batch_norm(y)
         y = F.relu(self.fc1(y))
-        # y = F.relu(self.fc2(y))
         y = torch.concat([y, agent_need], dim=1)
+        y = F.relu(self.fc2(y))
         y = F.relu(self.fc3(y))
         y = self.fc4(y)
 
