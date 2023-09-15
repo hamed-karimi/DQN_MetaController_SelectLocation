@@ -91,9 +91,9 @@ class Agent:
         at_cost = environment.get_cost(action_id)
         time_passed = torch.tensor(1.) if at_cost < 1.4 else at_cost
         # time_passed = 1
-        carried_total_need = self.get_total_need()
+        # carried_total_need = self.get_total_need()
         moving_cost = self.lambda_cost * at_cost
-        needs_cost = time_passed * carried_total_need
+        # needs_cost = time_passed * carried_total_need
 
         environment.update_agent_location_on_map(self)
         self.update_need_after_step(time_passed)
@@ -102,6 +102,7 @@ class Agent:
         f, _ = environment.get_reward()
         self.update_need_after_reward(f)
         at_total_need = self.get_total_need()
+        needs_cost = at_total_need  # end-up needs
         # needs_cost = at_needs
         # at_total_need = at_needs
         satisfaction = self.relu(last_total_need - at_total_need) * self.lambda_satisfaction
