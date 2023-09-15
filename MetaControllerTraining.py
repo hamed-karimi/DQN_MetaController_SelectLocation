@@ -67,7 +67,7 @@ def training_meta_controller():
                 agent_goal_map_0 = torch.stack([environment.env_map[:, 0, :, :], goal_map], dim=1)
 
                 action_id = controller.get_action(agent_goal_map_0).clone()
-                satisfaction, moving_cost, needs_cost = agent.take_action(environment, action_id)
+                satisfaction, moving_cost, needs_cost, dt = agent.take_action(environment, action_id)
                 # step_satisfactions.append(satisfaction)
                 # step_moving_costs.append(moving_cost)
                 # step_needs_costs.append(needs_cost)
@@ -99,8 +99,9 @@ def training_meta_controller():
                 # needs_cost_tensor = torch.tensor(step_needs_costs)
 
                 steps_reward = (satisfaction - needs_cost - moving_cost).unsqueeze(dim=0)
-                dt = torch.tensor([steps_reward.shape[0]])
-                steps_discounts = torch.pow(torch.ones(dt.item()) * params.GAMMA, torch.arange(dt.shape[0])).flip(dims=(0,))
+                dt = torch.tensor([dt])
+                steps_discounts = torch.pow(torch.ones(dt.shape[0]) * params.GAMMA,
+                                            torch.arange(dt.shape[0]) * dt).flip(dims=(0,))
                 discounted_reward = (steps_reward * steps_discounts).sum().unsqueeze(dim=0)
 
                 meta_controller.save_experience(env_map_0, need_0, goal_map, discounted_reward, done,
