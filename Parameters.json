@@ -2,7 +2,7 @@
     "HEIGHT" : 8,
     "WIDTH" : 8,
     "OBJECT_TYPE_NUM": 2,
-    "NEED_INCREASE": 1,
+    "NEED_INCREASE": 0.9,
     "REWARD_OF_OBJECT": 15,
     "LAMBDA_SATISFACTION": 1,
     "PROB_OF_FAR_OBJECTS_FOR_TWO": -1.0,
