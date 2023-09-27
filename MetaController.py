@@ -36,7 +36,7 @@ class MetaControllerMemory(ReplayMemory):
 
 class MetaController:
 
-    def __init__(self, batch_size, num_objects, max_gamma, improving_gamma, init_lr, lr_decay, episode_num, episode_len, memory_capacity,
+    def __init__(self, batch_size, num_objects, max_gamma, gamma_cascade, init_lr, lr_decay, episode_num, episode_len, memory_capacity,
                  first_steps_sample_ratio, trained_path=""):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.policy_net = hDQN().to(self.device)
@@ -60,15 +60,15 @@ class MetaController:
                                              lambda epoch: 1/(1 + lr_decay*epoch),
                                              last_epoch=-1, verbose=False)
         self.BATCH_SIZE = batch_size
-        self.improving_gamma = improving_gamma
+        self.gamma_cascade = gamma_cascade
         self.max_gamma = max_gamma
-        self.GAMMA = 0 if improving_gamma else self.max_gamma
+        self.GAMMA = 0 if gamma_cascade else self.max_gamma
         self.batch_size_mul = 3
         self.epsilon_list = []
         # self.selected_goal = np.ones((self.episode_num, 2)) * -1
 
-    def update_gamma(self):
-        if self.improving_gamma:
+    def update_gammas(self):
+        if self.gamma_cascade:
             self.GAMMA = 1-.99999*(1-self.GAMMA)
             self.GAMMA = min(self.GAMMA, self.max_gamma)
 
@@ -159,5 +159,5 @@ class MetaController:
         for param in self.policy_net.parameters():
             param.grad.data.clamp_(-1, 1)
         self.optimizer.step()
-        self.update_gamma()
+        self.update_gammas()
         return loss
