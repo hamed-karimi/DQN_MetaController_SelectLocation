@@ -21,9 +21,9 @@ def weights_init_orthogonal(m):
 
 # meta controller network
 class hDQN(nn.Module):
-    def __init__(self):
-        utilities = Utilities.Utilities()
-        self.params = utilities.params
+    def __init__(self, params):
+        # utilities = Utilities.Utilities()
+        self.params = params
         super(hDQN, self).__init__()
         env_layer_num = self.params.OBJECT_TYPE_NUM + 1  # +1 for agent layer
 

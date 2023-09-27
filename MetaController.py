@@ -36,41 +36,53 @@ class MetaControllerMemory(ReplayMemory):
 
 class MetaController:
 
-    def __init__(self, batch_size, num_objects, max_gamma, gamma_cascade, init_lr, lr_decay, episode_num, episode_len, memory_capacity,
-                 first_steps_sample_ratio, trained_path=""):
+    def __init__(self, params, pre_trained_weights_path=''):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.policy_net = hDQN().to(self.device)
-        if trained_path != "":
-            self.policy_net.load_state_dict(torch.load(trained_path,
+        self.policy_net = hDQN(params).to(self.device)
+        if pre_trained_weights_path != "":
+            self.policy_net.load_state_dict(torch.load(pre_trained_weights_path,
                                                        map_location=self.device))
         else:
             self.policy_net.apply(weights_init_orthogonal)
-        self.target_net = hDQN().to(self.device)
+        self.target_net = hDQN(params).to(self.device)
         self.target_net.load_state_dict(self.policy_net.state_dict())
-        self.memory = MetaControllerMemory(memory_capacity, first_steps_sample_ratio)
-        # self.rewarded_action_selection_ratio = rewarded_action_selection_ratio
-        self.object_type_num = num_objects
+        self.memory = MetaControllerMemory(params.META_CONTROLLER_MEMORY_CAPACITY,
+                                           params.FIRST_STEP_SAMPLING_RATIO)
+
+        self.object_type_num = params.OBJECT_TYPE_NUM
         self.steps_done = 0
         self.EPS_START = 0.95
         self.EPS_END = 0.05
-        self.episode_num = episode_num
-        self.episode_len = episode_len
-        self.optimizer = optim.RMSprop(self.policy_net.parameters(), lr=init_lr)
+        self.episode_num = params.META_CONTROLLER_EPISODE_NUM
+        self.episode_len = params.EPISODE_LEN
+        self.target_net_update = params.META_CONTROLLER_TARGET_UPDATE
+        self.optimizer = optim.RMSprop(self.policy_net.parameters(), lr=params.INIT_LEARNING_RATE)
         self.lr_scheduler = MultiplicativeLR(self.optimizer,
-                                             lambda epoch: 1/(1 + lr_decay*epoch),
+                                             lambda epoch: 1/(1 + params.LEARNING_RATE_DECAY*epoch),
                                              last_epoch=-1, verbose=False)
-        self.BATCH_SIZE = batch_size
-        self.gamma_cascade = gamma_cascade
-        self.max_gamma = max_gamma
-        self.GAMMA = 0 if gamma_cascade else self.max_gamma
+        self.BATCH_SIZE = params.META_CONTROLLER_BATCH_SIZE
+        self.gammas = [0.]
+        self.gamma_cascade = params.GAMMA_CASCADE
+        self.max_gamma = params.MAX_GAMMA
+        self.min_gamma = 0
+        self.GAMMA = 0 if self.gamma_cascade else self.max_gamma
         self.batch_size_mul = 3
         self.epsilon_list = []
-        # self.selected_goal = np.ones((self.episode_num, 2)) * -1
 
-    def update_gammas(self):
+    def gamma_function(self, episode):
+        ratio = 5 / self.target_net_update
+        gamma = min(1 / (1 + math.exp(-episode * ratio + math.exp(2.3))),
+                    self.max_gamma)
+        return gamma
+
+    def update_gammas(self, episode):
         if self.gamma_cascade:
-            self.GAMMA = 1-.99999*(1-self.GAMMA)
-            self.GAMMA = min(self.GAMMA, self.max_gamma)
+            for g in range(len(self.gammas)):
+                self.gammas[g] = self.gamma_function(episode)
+            if self.gammas[-1] == self.max_gamma:
+                self.gammas.append(self.min_gamma)
+            # self.GAMMA = 1-.99999*(1-self.GAMMA)
+            # self.GAMMA = min(self.GAMMA, self.max_gamma)
 
     def get_nonlinear_epsilon(self, episode):
         x = math.log(episode + 1, self.episode_num)
@@ -123,7 +135,7 @@ class MetaController:
     def update_target_net(self):
         self.target_net.load_state_dict(self.policy_net.state_dict())
 
-    def optimize(self):
+    def optimize(self, episode):
         if self.memory.__len__() < self.BATCH_SIZE * self.batch_size_mul:
             return float('nan')
         transition_sample = self.memory.sample(self.BATCH_SIZE)
@@ -159,5 +171,5 @@ class MetaController:
         for param in self.policy_net.parameters():
             param.grad.data.clamp_(-1, 1)
         self.optimizer.step()
-        self.update_gammas()
+        self.update_gammas(episode)
         return loss

@@ -1,24 +1,24 @@
 import matplotlib.pyplot as plt
 from MetaControllerVisualizer import MetaControllerVisualizer
 from ObjectFactory import ObjectFactory
-from Utilities import Utilities
+# from Utilities import Utilities
 import torch
 import numpy as np
 import os
 from MetaControllerVisualizer import MetaControllerVisualizer
 
 
-def test_meta_controller(meta_controller_dir, test_num=3):
-    utilities = Utilities()
-    params = utilities.params
-    factory = ObjectFactory(utilities)
+def test_meta_controller(utility, meta_controller_dir, test_num=3):
+    # utilities = Utilities()
+    params = utility.params
+    factory = ObjectFactory(utility)
 
     environment_initialization_prob_map = np.ones(params.HEIGHT * params.WIDTH) * 100 / (params.HEIGHT * params.WIDTH)
     object_amount_options = ['few', 'many']
 
-    meta_controller = factory.get_meta_controller(trained_path=os.path.join(meta_controller_dir,
-                                                                            'meta_controller_model.pt'))
-    meta_controller_visualizer = MetaControllerVisualizer(utilities)
+    meta_controller = factory.get_meta_controller(pre_trained_weights_path=os.path.join(meta_controller_dir,
+                                                                                        'meta_controller_model.pt'))
+    meta_controller_visualizer = MetaControllerVisualizer(utility)
 
     for test_trial in range(test_num):
         episode_object_amount = [np.random.choice(object_amount_options) for _ in range(params.OBJECT_TYPE_NUM)]

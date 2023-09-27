@@ -7,21 +7,19 @@ from torch.utils.tensorboard import SummaryWriter
 from MetaControllerVisualizer import MetaControllerVisualizer
 from Visualizer import get_reward_plot, get_loss_plot
 from ObjectFactory import ObjectFactory
-from Utilities import Utilities
 from AgentExplorationFunctions import *
 
 
-def training_meta_controller():
-    utility = Utilities()
+def training_meta_controller(utility):
     params = utility.params
 
     res_folder = utility.make_res_folder(sub_folder='MetaController')
     # utility.save_training_config()
-    writer = SummaryWriter()
+    writer = SummaryWriter(log_dir='CascadeRuns')
 
     factory = ObjectFactory(utility)
     controller = factory.get_controller()
-    meta_controller = factory.get_meta_controller(trained_path='')
+    meta_controller = factory.get_meta_controller()
     meta_controller_visualizer = MetaControllerVisualizer(utility)
     environment_initialization_prob_map = np.ones(params.HEIGHT * params.WIDTH) * 100 / (params.HEIGHT * params.WIDTH)
 
@@ -43,9 +41,11 @@ def training_meta_controller():
         for goal_selecting_step in range(params.EPISODE_LEN):
             steps = 0
             # steps_rho = []
+            steps_reward = 0
             step_satisfactions = []
             step_moving_costs = []
             step_needs_costs = []
+            step_dt = []
             if episode_begin:
                 agent = factory.get_agent(pre_located_agent,
                                           pre_assigned_needs)
@@ -68,55 +68,63 @@ def training_meta_controller():
 
                 action_id = controller.get_action(agent_goal_map_0).clone()
                 satisfaction, moving_cost, needs_cost, dt = agent.take_action(environment, action_id)
-                # step_satisfactions.append(satisfaction)
-                # step_moving_costs.append(moving_cost)
-                # step_needs_costs.append(needs_cost)
-
+                step_satisfactions.append(satisfaction)
+                step_moving_costs.append(moving_cost)
+                step_needs_costs.append(needs_cost)
+                step_dt.append(dt)
                 # steps_rho.append(rho)
 
                 goal_reached = agent_reached_goal(environment, goal_map)
 
                 steps += 1
+                if goal_reached:# or steps == params.EPISODE_STEPS:  # taking only the 1st step
+                    pre_located_objects_location = update_pre_located_objects(environment.object_locations,
+                                                                              agent.location,
+                                                                              goal_reached)
+                    pre_located_objects_num = environment.each_type_object_num
+                    pre_located_agent = agent.location.tolist()
+                    pre_assigned_needs = agent.need.tolist()
 
-                # if goal_reached or steps == 1:  # taking only the 1st step
-                pre_located_objects_location = update_pre_located_objects(environment.object_locations,
-                                                                          agent.location,
-                                                                          goal_reached)
-                pre_located_objects_num = environment.each_type_object_num
-                pre_located_agent = agent.location.tolist()
-                pre_assigned_needs = agent.need.tolist()
+                    agent = factory.get_agent(pre_located_agent,
+                                              pre_assigned_needs)
 
-                agent = factory.get_agent(pre_located_agent,
-                                          pre_assigned_needs)
+                    environment = factory.get_environment(episode_object_amount,
+                                                          environment_initialization_prob_map,
+                                                          pre_located_objects_num,
+                                                          pre_located_objects_location)
 
-                environment = factory.get_environment(episode_object_amount,
-                                                      environment_initialization_prob_map,
-                                                      pre_located_objects_num,
-                                                      pre_located_objects_location)
-                # satisfaction_tensor = torch.tensor(step_satisfactions)
-                # moving_cost_tensor = torch.tensor(step_moving_costs)
-                #
-                # needs_cost_tensor = torch.tensor(step_needs_costs)
+                    satisfaction_tensor = torch.tensor(step_satisfactions)
+                    moving_cost_tensor = torch.tensor(step_moving_costs)
+                    needs_cost_tensor = torch.tensor(step_needs_costs)
+                    dt_tensor = torch.tensor(step_dt).unsqueeze(dim=0).sum(dim=1)
 
-                steps_reward = (satisfaction - needs_cost - moving_cost).unsqueeze(dim=0)
-                dt = torch.tensor([dt])
-                steps_discounts = torch.pow(torch.ones(dt.shape[0]) * params.GAMMA,
-                                            torch.arange(dt.shape[0]) * dt).flip(dims=(0,))
-                discounted_reward = (steps_reward * steps_discounts).sum().unsqueeze(dim=0)
+                    steps_reward = (satisfaction_tensor - moving_cost_tensor - needs_cost_tensor).unsqueeze(dim=0)
+                    steps_discounts = torch.zeros(1, steps_reward.shape[1])
+                    steps_discounts[0, 0] = 1  # step reward is not discounted
+                    step_gamma_avail = min(len(meta_controller.gammas), steps_discounts.shape[1]-1)
+                    steps_discounts[0, 1:step_gamma_avail+1] = torch.as_tensor(meta_controller.gammas[:step_gamma_avail])
+                    steps_discounts = torch.cumprod(steps_discounts, dim=0)
+                    # meta_controller.gammas
+                    # dt = torch.tensor([dt])
+                    # steps_discounts = torch.pow(torch.ones(dt.shape[0]) * params.GAMMA,
+                    #                             torch.arange(dt.shape[0]) * dt).flip(dims=(0,))
+                    discounted_reward = (steps_reward * steps_discounts).sum().unsqueeze(dim=0)
 
-                meta_controller.save_experience(env_map_0, need_0, goal_map, discounted_reward, done,
-                                                dt, environment.env_map.clone(), agent.need.clone())
+                    meta_controller.save_experience(env_map_0, need_0, goal_map, discounted_reward, done,
+                                                    dt_tensor, environment.env_map.clone(), agent.need.clone())
 
                 if goal_reached or steps == params.EPISODE_STEPS:
                     break
 
-            episode_meta_controller_reward += discounted_reward
-            at_loss = meta_controller.optimize()
+            episode_meta_controller_reward += steps_reward.sum()
+            at_loss = meta_controller.optimize(episode=episode)
             episode_meta_controller_loss += get_meta_controller_loss(at_loss)
         if episode_meta_controller_loss > 0:
             meta_controller.lr_scheduler.step()
         writer.add_scalar("Meta Controller/Loss", episode_meta_controller_loss / params.EPISODE_LEN, episode)
         writer.add_scalar("Meta Controller/Reward", episode_meta_controller_reward / params.EPISODE_LEN, episode)
+        for g in range(len(meta_controller.gammas)):
+            writer.add_scalar("Meta Controller/Gamma", meta_controller.gammas[g], episode)
 
         if (episode + 1) % params.PRINT_OUTPUT == 0:
             pre_located_objects_location = [[[]]] * params.OBJECT_TYPE_NUM
