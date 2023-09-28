@@ -17,7 +17,7 @@ class MetaControllerMemory(ReplayMemory):
 
     def get_transition(self, *args):
         Transition = namedtuple('Transition',
-                                ('initial_map', 'initial_need', 'goal_map', 'reward', 'done', 'dt', 'final_map',
+                                ('initial_map', 'initial_need', 'goal_map', 'reward', 'n_steps', 'dt', 'final_map',
                                  'final_need'))
         return Transition(*args)
 
@@ -37,6 +37,8 @@ class MetaControllerMemory(ReplayMemory):
 class MetaController:
 
     def __init__(self, params, pre_trained_weights_path=''):
+        self.env_height = params.HEIGHT
+        self.env_width = params.WIDTH
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.policy_net = hDQN(params).to(self.device)
         if pre_trained_weights_path != "":
@@ -66,12 +68,12 @@ class MetaController:
         self.gamma_cascade = params.GAMMA_CASCADE
         self.max_gamma = params.MAX_GAMMA
         self.min_gamma = 0
-        self.GAMMA = 0 if self.gamma_cascade else self.max_gamma
+        # self.GAMMA = 0 if self.gamma_cascade else self.max_gamma
         self.batch_size_mul = 3
         self.epsilon_list = []
 
     def gamma_function(self, episode):
-        m = 2
+        m = 4
         ratio = m / self.target_net_update
         gamma = min(1 / (1 + math.exp(-episode * ratio + math.exp(2.3))),
                     self.max_gamma)
@@ -82,7 +84,7 @@ class MetaController:
             for g in range(len(self.gammas)):
                 self.gammas[g] = self.gamma_function(self.gamma_episodes[g])
                 self.gamma_episodes[g] += 1
-            if self.gammas[-1] == self.max_gamma:
+            if self.gammas[-1] == self.max_gamma and len(self.gammas) < max(self.env_width, self.env_height):
                 self.gammas.append(self.min_gamma)
                 self.gamma_episodes.append(0)
             # self.GAMMA = 1-.99999*(1-self.GAMMA)
@@ -94,7 +96,7 @@ class MetaController:
         return epsilon
 
     def get_linear_epsilon(self, episode):
-        return 1-self.gammas[-1]
+        # return 1-self.gammas[-1]
         epsilon = self.EPS_START - (episode / self.episode_num) * \
                   (self.EPS_START - self.EPS_END)
         return epsilon
@@ -132,8 +134,8 @@ class MetaController:
         self.steps_done += 1
         return goal_map, goal_location  # , goal_type
 
-    def save_experience(self, initial_map, initial_need, goal_map, acquired_reward, done, dt, final_map, final_need):
-        self.memory.push_experience(initial_map, initial_need, goal_map, acquired_reward, done, dt, final_map, final_need)
+    def save_experience(self, initial_map, initial_need, goal_map, acquired_reward, n_steps, dt, final_map, final_need):
+        self.memory.push_experience(initial_map, initial_need, goal_map, acquired_reward, n_steps, dt, final_map, final_need)
         memory_prob = 1
         self.memory.push_selection_ratio(selection_ratio=memory_prob)
 
@@ -151,7 +153,8 @@ class MetaController:
         initial_need_batch = torch.cat([batch.initial_need[i] for i in range(len(batch.initial_need))]).to(self.device)
         goal_map_batch = torch.cat(batch.goal_map).to(self.device)
         reward_batch = torch.cat(batch.reward).to(self.device)
-        time_batch = torch.cat(batch.dt).to(self.device)
+        n_steps_batch = torch.cat(batch.n_steps).to(self.device)
+        # time_batch = torch.cat(batch.dt).to(self.device)
         final_map_batch = torch.cat([batch.final_map[i] for i in range(len(batch.final_map))]).to(self.device)
         final_need_batch = torch.cat([batch.final_need[i] for i in range(len(batch.final_need))]).to(self.device)
         final_map_object_mask_batch = final_map_batch.sum(dim=1)
@@ -167,7 +170,19 @@ class MetaController:
         targetnet_max_goal_value = torch.amax(targetnet_goal_values_of_final_state,
                                               dim=(1, 2)).detach().float()
         goal_values_of_selected_goals = policynet_goal_values_of_initial_state[goal_map_batch == 1]
-        expected_goal_values = targetnet_max_goal_value * (self.GAMMA ** time_batch) + reward_batch
+
+        # at_gammas = torch.zeros(reward_batch.shape[0], reward_batch.shape[1]-1)
+
+        steps_discounts = torch.zeros(reward_batch.shape[0], reward_batch.shape[1]-1) # add step reward later
+        steps_discounts[:, :len(self.gammas)] = torch.as_tensor(self.gammas)
+        steps_discounts = torch.cat([torch.ones(steps_discounts.shape[0], 1),
+                                     steps_discounts], dim=1)
+
+        steps_discounts = torch.cumprod(steps_discounts, dim=1)
+        discounted_reward = (reward_batch * steps_discounts).sum(dim=1)
+
+        q_gamma = torch.cumprod(torch.as_tensor(self.gammas), dim=0)
+        expected_goal_values = targetnet_max_goal_value * q_gamma + discounted_reward
 
         criterion = nn.SmoothL1Loss()
         loss = criterion(goal_values_of_selected_goals, expected_goal_values)

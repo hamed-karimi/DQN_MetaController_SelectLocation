@@ -55,15 +55,15 @@ def training_meta_controller(utility):
                                                       pre_located_objects_location)
                 episode_begin = False
 
-            # env_map_0 = environment.env_map.clone()
-            # need_0 = agent.need.clone()
+            env_map_0 = environment.env_map.clone()
+            need_0 = agent.need.clone()
             goal_map, goal_location = meta_controller.get_goal_map(environment,
                                                                    agent,
-                                                                   episode)  # goal type is either 0 or 1
-            done = torch.tensor([0])
+                                                                   episode)
+            # done = torch.tensor([0])
             while True:
-                env_map_0 = environment.env_map.clone()
-                need_0 = agent.need.clone()
+                # env_map_0 = environment.env_map.clone()
+                # need_0 = agent.need.clone()
                 agent_goal_map_0 = torch.stack([environment.env_map[:, 0, :, :], goal_map], dim=1)
 
                 action_id = controller.get_action(agent_goal_map_0).clone()
@@ -77,7 +77,7 @@ def training_meta_controller(utility):
                 goal_reached = agent_reached_goal(environment, goal_map)
 
                 steps += 1
-                if goal_reached:# or steps == params.EPISODE_STEPS:  # taking only the 1st step
+                if goal_reached: # or steps == params.EPISODE_STEPS:  # taking only the 1st step
                     pre_located_objects_location = update_pre_located_objects(environment.object_locations,
                                                                               agent.location,
                                                                               goal_reached)
@@ -97,20 +97,12 @@ def training_meta_controller(utility):
                     moving_cost_tensor = torch.tensor(step_moving_costs)
                     needs_cost_tensor = torch.tensor(step_needs_costs)
                     dt_tensor = torch.tensor(step_dt).unsqueeze(dim=0).sum(dim=1)
+                    steps_tensor = torch.tensor([steps], dtype=torch.int32)
 
-                    steps_reward = (satisfaction_tensor - moving_cost_tensor - needs_cost_tensor).unsqueeze(dim=0)
-                    steps_discounts = torch.zeros(1, steps_reward.shape[1])
-                    steps_discounts[0, 0] = 1  # step reward is not discounted
-                    step_gamma_avail = min(len(meta_controller.gammas), steps_discounts.shape[1]-1)
-                    steps_discounts[0, 1:step_gamma_avail+1] = torch.as_tensor(meta_controller.gammas[:step_gamma_avail])
-                    steps_discounts = torch.cumprod(steps_discounts, dim=0)
-                    # meta_controller.gammas
-                    # dt = torch.tensor([dt])
-                    # steps_discounts = torch.pow(torch.ones(dt.shape[0]) * params.GAMMA,
-                    #                             torch.arange(dt.shape[0]) * dt).flip(dims=(0,))
-                    discounted_reward = (steps_reward * steps_discounts).sum().unsqueeze(dim=0)
+                    steps_reward = torch.zeros(1, max(params.HEIGHT, params.WIDTH))
+                    steps_reward[0, :steps] = (satisfaction_tensor - moving_cost_tensor - needs_cost_tensor).unsqueeze(dim=0)
 
-                    meta_controller.save_experience(env_map_0, need_0, goal_map, discounted_reward, done,
+                    meta_controller.save_experience(env_map_0, need_0, goal_map, steps_reward, steps_tensor,
                                                     dt_tensor, environment.env_map.clone(), agent.need.clone())
 
                 if goal_reached or steps == params.EPISODE_STEPS:
