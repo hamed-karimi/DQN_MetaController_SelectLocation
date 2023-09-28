@@ -172,13 +172,11 @@ class MetaController:
                                               dim=(1, 2)).detach().float()
         goal_values_of_selected_goals = policynet_goal_values_of_initial_state[goal_map_batch == 1]
 
-        # at_gammas = torch.zeros(reward_batch.shape[0], reward_batch.shape[1]-1)
-
         steps_discounts = torch.zeros(reward_batch.shape[0], reward_batch.shape[1] - 1,
-                                      device=self.device)  # add step reward later
+                                      device=self.device)
         steps_discounts[:, :len(self.gammas)] = torch.as_tensor(self.gammas, device=self.device)
         steps_discounts = torch.cat([torch.ones(steps_discounts.shape[0], 1, device=self.device),
-                                     steps_discounts], dim=1)
+                                     steps_discounts], dim=1) # step reward is not discounted
 
         steps_discounts = torch.cumprod(steps_discounts, dim=1)
         discounted_reward = (reward_batch * steps_discounts).sum(dim=1)
