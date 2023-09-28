@@ -62,6 +62,7 @@ class MetaController:
                                              last_epoch=-1, verbose=False)
         self.BATCH_SIZE = params.META_CONTROLLER_BATCH_SIZE
         self.gammas = [0.]
+        self.gamma_episodes = [0]
         self.gamma_cascade = params.GAMMA_CASCADE
         self.max_gamma = params.MAX_GAMMA
         self.min_gamma = 0
@@ -78,9 +79,11 @@ class MetaController:
     def update_gammas(self, episode):
         if self.gamma_cascade:
             for g in range(len(self.gammas)):
-                self.gammas[g] = self.gamma_function(episode)
+                self.gammas[g] = self.gamma_function(self.gamma_episodes[g])
+                self.gamma_episodes[g] += 1
             if self.gammas[-1] == self.max_gamma:
                 self.gammas.append(self.min_gamma)
+                self.gamma_episodes.append(0)
             # self.GAMMA = 1-.99999*(1-self.GAMMA)
             # self.GAMMA = min(self.GAMMA, self.max_gamma)
 
