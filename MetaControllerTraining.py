@@ -15,8 +15,8 @@ def training_meta_controller(utility):
 
     res_folder = utility.make_res_folder(sub_folder='MetaController')
     # utility.save_training_config()
-    writer = SummaryWriter(log_dir='CascadeRuns/{0}'.format(res_folder.split('\\')[0]))
-
+    # writer = SummaryWriter(log_dir='CascadeRuns/{0}'.format(res_folder.split('\\')[0]))
+    writer = SummaryWriter()
     factory = ObjectFactory(utility)
     controller = factory.get_controller()
     meta_controller = factory.get_meta_controller()
@@ -125,6 +125,7 @@ def training_meta_controller(utility):
         writer.add_scalar("Meta Controller/Reward", episode_meta_controller_reward / params.EPISODE_LEN, episode)
         for g in range(len(meta_controller.gammas)):
             writer.add_scalar("Meta Controller/Gamma", meta_controller.gammas[g], episode)
+            print(episode, meta_controller.gammas[g])
 
         if (episode + 1) % params.PRINT_OUTPUT == 0:
             pre_located_objects_location = [[[]]] * params.OBJECT_TYPE_NUM
