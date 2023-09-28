@@ -181,7 +181,7 @@ class MetaController:
         steps_discounts = torch.cumprod(steps_discounts, dim=1)
         discounted_reward = (reward_batch * steps_discounts).sum(dim=1)
 
-        q_gamma = torch.cumprod(torch.as_tensor(self.gammas), dim=0)
+        q_gamma = torch.cumprod(torch.as_tensor(self.gammas, device=self.device), dim=0)
         expected_goal_values = targetnet_max_goal_value * q_gamma + discounted_reward
 
         criterion = nn.SmoothL1Loss()
