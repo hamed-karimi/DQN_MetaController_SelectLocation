@@ -173,9 +173,9 @@ class MetaController:
 
         # at_gammas = torch.zeros(reward_batch.shape[0], reward_batch.shape[1]-1)
 
-        steps_discounts = torch.zeros(reward_batch.shape[0], reward_batch.shape[1]-1) # add step reward later
-        steps_discounts[:, :len(self.gammas)] = torch.as_tensor(self.gammas)
-        steps_discounts = torch.cat([torch.ones(steps_discounts.shape[0], 1),
+        steps_discounts = torch.zeros(reward_batch.shape[0], reward_batch.shape[1]-1, device=self.device) # add step reward later
+        steps_discounts[:, :len(self.gammas)] = torch.as_tensor(self.gammas, device=self.device)
+        steps_discounts = torch.cat([torch.ones(steps_discounts.shape[0], 1, device=self.device),
                                      steps_discounts], dim=1)
 
         steps_discounts = torch.cumprod(steps_discounts, dim=1)
