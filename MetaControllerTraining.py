@@ -123,9 +123,12 @@ def training_meta_controller(utility):
             meta_controller.lr_scheduler.step()
         writer.add_scalar("Meta Controller/Loss", episode_meta_controller_loss / params.EPISODE_LEN, episode)
         writer.add_scalar("Meta Controller/Reward", episode_meta_controller_reward / params.EPISODE_LEN, episode)
+        gamma_dict = {}
         for g in range(len(meta_controller.gammas)):
-            writer.add_scalar("Meta Controller/Gamma", meta_controller.gammas[g], episode)
-            print(episode, meta_controller.gammas[g])
+            # writer.add_scalar("Meta Controller/Gamma", meta_controller.gammas[g], episode)
+            gamma_dict['gamma_{0}'.format(g)] = meta_controller.gammas[g]
+
+        writer.add_scalars(f'Meta Controller/Gamma', gamma_dict, episode)
 
         if (episode + 1) % params.PRINT_OUTPUT == 0:
             pre_located_objects_location = [[[]]] * params.OBJECT_TYPE_NUM
