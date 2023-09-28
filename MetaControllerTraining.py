@@ -15,7 +15,7 @@ def training_meta_controller(utility):
 
     res_folder = utility.make_res_folder(sub_folder='MetaController')
     # utility.save_training_config()
-    writer = SummaryWriter(log_dir='CascadeRuns')
+    writer = SummaryWriter(log_dir='CascadeRuns/{0}'.format(res_folder.split('\\')[0]))
 
     factory = ObjectFactory(utility)
     controller = factory.get_controller()
