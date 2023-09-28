@@ -60,7 +60,7 @@ class MetaController:
         self.target_net_update = params.META_CONTROLLER_TARGET_UPDATE
         self.optimizer = optim.RMSprop(self.policy_net.parameters(), lr=params.INIT_LEARNING_RATE)
         self.lr_scheduler = MultiplicativeLR(self.optimizer,
-                                             lambda epoch: 1/(1 + params.LEARNING_RATE_DECAY*epoch),
+                                             lambda epoch: 1 / (1 + params.LEARNING_RATE_DECAY * epoch),
                                              last_epoch=-1, verbose=False)
         self.BATCH_SIZE = params.META_CONTROLLER_BATCH_SIZE
         self.gammas = [0.]
@@ -135,7 +135,8 @@ class MetaController:
         return goal_map, goal_location  # , goal_type
 
     def save_experience(self, initial_map, initial_need, goal_map, acquired_reward, n_steps, dt, final_map, final_need):
-        self.memory.push_experience(initial_map, initial_need, goal_map, acquired_reward, n_steps, dt, final_map, final_need)
+        self.memory.push_experience(initial_map, initial_need, goal_map, acquired_reward, n_steps, dt, final_map,
+                                    final_need)
         memory_prob = 1
         self.memory.push_selection_ratio(selection_ratio=memory_prob)
 
@@ -173,7 +174,8 @@ class MetaController:
 
         # at_gammas = torch.zeros(reward_batch.shape[0], reward_batch.shape[1]-1)
 
-        steps_discounts = torch.zeros(reward_batch.shape[0], reward_batch.shape[1]-1, device=self.device) # add step reward later
+        steps_discounts = torch.zeros(reward_batch.shape[0], reward_batch.shape[1] - 1,
+                                      device=self.device)  # add step reward later
         steps_discounts[:, :len(self.gammas)] = torch.as_tensor(self.gammas, device=self.device)
         steps_discounts = torch.cat([torch.ones(steps_discounts.shape[0], 1, device=self.device),
                                      steps_discounts], dim=1)
@@ -181,7 +183,8 @@ class MetaController:
         steps_discounts = torch.cumprod(steps_discounts, dim=1)
         discounted_reward = (reward_batch * steps_discounts).sum(dim=1)
 
-        q_gamma = torch.cumprod(torch.as_tensor(self.gammas, device=self.device), dim=0)
+        q_gamma = torch.prod(torch.as_tensor(self.gammas,
+                                             device=self.device).unsqueeze(dim=0), dim=1)
         expected_goal_values = targetnet_max_goal_value * q_gamma + discounted_reward
 
         criterion = nn.SmoothL1Loss()
