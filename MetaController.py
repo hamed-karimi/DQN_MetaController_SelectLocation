@@ -94,6 +94,7 @@ class MetaController:
         return epsilon
 
     def get_linear_epsilon(self, episode):
+        return 1-self.gammas[-1]
         epsilon = self.EPS_START - (episode / self.episode_num) * \
                   (self.EPS_START - self.EPS_END)
         return epsilon
