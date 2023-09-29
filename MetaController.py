@@ -1,14 +1,11 @@
 import random
-
-from sphinx.addnodes import index
 from torch import optim
 import torch
 from torch.optim.lr_scheduler import MultiplicativeLR
 from DQN import hDQN, weights_init_orthogonal
 from ReplayMemory import ReplayMemory
-from collections import namedtuple, deque
+from collections import namedtuple
 from torch import nn
-import numpy as np
 import math
 
 
