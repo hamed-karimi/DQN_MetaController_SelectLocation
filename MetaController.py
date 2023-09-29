@@ -1,4 +1,6 @@
 import random
+
+from sphinx.addnodes import index
 from torch import optim
 import torch
 from torch.optim.lr_scheduler import MultiplicativeLR
@@ -73,7 +75,7 @@ class MetaController:
         self.epsilon_list = []
 
     def gamma_function(self, episode):
-        m = 2
+        m = 5 # 2
         ratio = m / self.target_net_update
         gamma = min(1 / (1 + math.exp(-episode * ratio + math.exp(2.3))),
                     self.max_gamma)
@@ -84,7 +86,7 @@ class MetaController:
             for g in range(len(self.gammas)):
                 self.gammas[g] = self.gamma_function(self.gamma_episodes[g])
                 self.gamma_episodes[g] += 1
-            if self.gammas[-1] == self.max_gamma and len(self.gammas) < max(self.env_width, self.env_height)-1:
+            if self.gammas[-1] == self.max_gamma and len(self.gammas) < max(self.env_width, self.env_height):
                 self.gammas.append(self.min_gamma)
                 self.gamma_episodes.append(0)
             # self.GAMMA = 1-.99999*(1-self.GAMMA)
@@ -172,18 +174,27 @@ class MetaController:
                                               dim=(1, 2)).detach().float()
         goal_values_of_selected_goals = policynet_goal_values_of_initial_state[goal_map_batch == 1]
 
-        steps_discounts = torch.zeros(reward_batch.shape[0], reward_batch.shape[1] - 1,
+        steps_discounts = torch.zeros(reward_batch.shape,
                                       device=self.device)
         steps_discounts[:, :len(self.gammas)] = torch.as_tensor(self.gammas, device=self.device)
         steps_discounts = torch.cat([torch.ones(steps_discounts.shape[0], 1, device=self.device),
-                                     steps_discounts], dim=1) # step reward is not discounted
+                                     steps_discounts], dim=1)  # step reward is not discounted
 
-        steps_discounts = torch.cumprod(steps_discounts, dim=1)
-        discounted_reward = (reward_batch * steps_discounts).sum(dim=1)
+        cum_steps_discounts = torch.cumprod(steps_discounts, dim=1)[:, :-1]  # step reward is not discounted, so the
+                                                                        # num of gammas for discounting rewards is
+                                                                        # one less than for Q
+        discounted_reward = (reward_batch * cum_steps_discounts).sum(dim=1)
 
-        q_gamma = torch.prod(torch.as_tensor(self.gammas,
-                                             device=self.device).unsqueeze(dim=0), dim=1)
-        expected_goal_values = targetnet_max_goal_value * q_gamma + discounted_reward
+        # gammas_tensor = torch.as_tensor(self.gammas)
+        # steps_mask = torch.tile(torch.arange(max(self.env_width, self.env_height), device=self.device),
+        #                         dims=(self.BATCH_SIZE, 1)) < n_steps_batch.unsqueeze(dim=1)
+        # gammas_tile = torch.tile(torch.as_tensor(self.gammas))
+        # q_gamma = torch.prod(torch.as_tensor(self.gammas,
+        #                                      device=self.device).unsqueeze(dim=0), dim=1)
+
+        q_gammas = torch.cumprod(steps_discounts[:, 1:], dim=1).gather(dim=1, index=n_steps_batch.unsqueeze(dim=1).long()-1)
+        # [:, n_steps_batch.unsqueeze(dim=1)-1]
+        expected_goal_values = targetnet_max_goal_value * q_gammas.squeeze() + discounted_reward
 
         criterion = nn.SmoothL1Loss()
         loss = criterion(goal_values_of_selected_goals, expected_goal_values)
