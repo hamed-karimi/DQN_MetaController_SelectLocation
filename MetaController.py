@@ -75,7 +75,7 @@ class MetaController:
         self.epsilon_list = []
 
     def gamma_function(self, episode):
-        m = 5 # 2
+        m = 3
         ratio = m / self.target_net_update
         gamma = min(1 / (1 + math.exp(-episode * ratio + math.exp(2.3))),
                     self.max_gamma)
