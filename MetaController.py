@@ -84,7 +84,7 @@ class MetaController:
             for g in range(len(self.gammas)):
                 self.gammas[g] = self.gamma_function(self.gamma_episodes[g])
                 self.gamma_episodes[g] += 1
-            if self.gammas[-1] == self.max_gamma and len(self.gammas) < max(self.env_width, self.env_height):
+            if self.gammas[-1] == self.max_gamma and len(self.gammas) < max(self.env_width, self.env_height)-1:
                 self.gammas.append(self.min_gamma)
                 self.gamma_episodes.append(0)
             # self.GAMMA = 1-.99999*(1-self.GAMMA)
