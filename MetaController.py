@@ -20,18 +20,6 @@ class MetaControllerMemory(ReplayMemory):
                                  'final_need'))
         return Transition(*args)
 
-    # def update_top_n_experiences(self, n, episode_satisfactions):
-    #     temp_experiences = []
-    #     top_rewards = deque([], maxlen=n)
-    #     for i in range(n-1, -1, -1):
-    #         top = self.memory.pop()
-    #         top_rewards.append(episode_satisfactions[i:].sum().unsqueeze(dim=0))
-    #         temp_experiences.append(top)
-    #
-    #     for exp in temp_experiences.__reversed__():
-    #         self.push_experience(exp.initial_map, exp.initial_need, exp.goal_index, top_rewards.pop() + exp.reward,
-    #                              exp.done, exp.final_map, exp.final_need)
-
 
 class MetaController:
 
@@ -82,24 +70,20 @@ class MetaController:
                     self.max_gamma)
         return gamma
 
-    def update_gammas(self, episode):
+    def update_gammas(self):
         if self.gamma_cascade:
             for g in range(len(self.gammas)):
                 self.gammas[g] = self.gamma_function(self.gamma_episodes[g])
                 self.gamma_episodes[g] += 1
-            if self.gammas[-1] == self.max_gamma and len(self.gammas) < self.max_step_num and self.gamma_delay_episodes[-1] < self.gamma_max_delay:
+            if self.gammas[-1] == self.max_gamma and len(self.gammas) < self.max_step_num and self.gamma_delay_episodes[
+                -1] < self.gamma_max_delay:
                 self.gamma_delay_episodes[-1] += 1
 
-            if self.gammas[-1] == self.max_gamma and len(self.gammas) < self.max_step_num and self.gamma_delay_episodes[-1] == self.gamma_max_delay:
+            if self.gammas[-1] == self.max_gamma and len(self.gammas) < self.max_step_num and self.gamma_delay_episodes[
+                -1] == self.gamma_max_delay:
                 self.gammas.append(self.min_gamma)
                 self.gamma_episodes.append(0)
                 self.gamma_delay_episodes.append(0)
-
-                # Change: make a delay between the rise of a gamma and the previous one.
-                # if self.gammas[-1] == self.max_gamma and len(self.gamma_reached_max_episode) < len(self.gamma_episodes):
-                #     self.gamma
-                #     self.gammas.append(self.min_gamma)
-                #     self.gamma_episodes.append(0)
 
     def get_nonlinear_epsilon(self, episode):
         x = math.log(episode + 1, self.episode_num)
@@ -112,10 +96,12 @@ class MetaController:
                   (self.EPS_START - self.EPS_END)
         return epsilon
 
-    def get_goal_map(self, environment, agent, episode):
+    def get_goal_map(self, environment, agent, episode, epsilon=None):
         # epsilon = self.get_nonlinear_epsilon(episode)
         goal_map = torch.zeros_like(environment.env_map[:, 0, :, :])
-        epsilon = self.get_linear_epsilon(episode)
+        if epsilon is None:
+            epsilon = self.get_linear_epsilon(episode)
+
         self.epsilon_list.append(epsilon)
         e = random.random()
         all_object_locations = torch.stack(torch.where(environment.env_map[0, 1:, :, :]), dim=1)
@@ -166,7 +152,6 @@ class MetaController:
         goal_map_batch = torch.cat(batch.goal_map).to(self.device)
         reward_batch = torch.cat(batch.reward).to(self.device)
         n_steps_batch = torch.cat(batch.n_steps).to(self.device)
-        # time_batch = torch.cat(batch.dt).to(self.device)
         final_map_batch = torch.cat([batch.final_map[i] for i in range(len(batch.final_map))]).to(self.device)
         final_need_batch = torch.cat([batch.final_need[i] for i in range(len(batch.final_need))]).to(self.device)
         final_map_object_mask_batch = final_map_batch.sum(dim=1)
@@ -176,7 +161,6 @@ class MetaController:
         targetnet_goal_values_of_final_state = self.target_net(final_map_batch,
                                                                final_need_batch).to(self.device)
 
-        # final_map_object_mask_batch = torch.ones_like(targetnet_goal_values_of_final_state)
         targetnet_goal_values_of_final_state[final_map_object_mask_batch < 1] = -math.inf
 
         targetnet_max_goal_value = torch.amax(targetnet_goal_values_of_final_state,
@@ -190,11 +174,12 @@ class MetaController:
                                      steps_discounts], dim=1)  # step reward is not discounted
 
         cum_steps_discounts = torch.cumprod(steps_discounts, dim=1)[:, :-1]  # step reward is not discounted, so the
-                                                                        # num of gammas for discounting rewards is
-                                                                        # one less than for Q
+                                                                             # num of gammas for discounting rewards is
+                                                                             # one less than for Q
         discounted_reward = (reward_batch * cum_steps_discounts).sum(dim=1)
 
-        q_gammas = torch.cumprod(steps_discounts[:, 1:], dim=1).gather(dim=1, index=n_steps_batch.unsqueeze(dim=1).long()-1)
+        q_gammas = torch.cumprod(steps_discounts[:, 1:], dim=1).gather(dim=1,
+                                                                       index=n_steps_batch.unsqueeze(dim=1).long() - 1)
 
         expected_goal_values = targetnet_max_goal_value * q_gammas.squeeze() + discounted_reward
 
@@ -205,5 +190,5 @@ class MetaController:
         for param in self.policy_net.parameters():
             param.grad.data.clamp_(-1, 1)
         self.optimizer.step()
-        self.update_gammas(episode)
+        self.update_gammas()
         return loss

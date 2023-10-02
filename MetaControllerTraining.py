@@ -5,7 +5,6 @@ from copy import deepcopy
 import torch
 from torch.utils.tensorboard import SummaryWriter
 from MetaControllerVisualizer import MetaControllerVisualizer
-from Visualizer import get_reward_plot, get_loss_plot
 from ObjectFactory import ObjectFactory
 from AgentExplorationFunctions import *
 
@@ -25,6 +24,7 @@ def training_meta_controller(utility):
 
     for episode in range(params.META_CONTROLLER_EPISODE_NUM):
         episode_begin = True
+        episode_q_function_selected_goal_reward = 0
         episode_meta_controller_reward = 0
         episode_meta_controller_loss = 0
         # all_actions = 0
@@ -50,15 +50,17 @@ def training_meta_controller(utility):
             if episode_begin:
                 agent = factory.get_agent(pre_located_agent,
                                           pre_assigned_needs)
-                environment = factory.get_environment(episode_object_amount,
+                environment = factory.get_environment(agent,
+                                                      episode_object_amount,
                                                       environment_initialization_prob_map,
                                                       pre_located_objects_num,
                                                       pre_located_objects_location,
                                                       prohibited_object_locations)
                 episode_begin = False
 
-            env_map_0 = environment.env_map.clone()
-            need_0 = agent.need.clone()
+            environment_0 = deepcopy(environment)
+            agent_0 = deepcopy(agent)
+            # need_0 = agent.need.clone()
             goal_map, goal_location = meta_controller.get_goal_map(environment,
                                                                    agent,
                                                                    episode)
@@ -91,19 +93,13 @@ def training_meta_controller(utility):
                     agent = factory.get_agent(pre_located_agent,
                                               pre_assigned_needs)
 
-                    environment = factory.get_environment(episode_object_amount,
+                    environment = factory.get_environment(agent,
+                                                          episode_object_amount,
                                                           environment_initialization_prob_map,
                                                           pre_located_objects_num,
                                                           pre_located_objects_location,
                                                           prohibited_object_locations)
 
-                    if any(environment.env_map[0, 1:, agent.location[0, 0], agent.location[0, 1]] > 0) and action_id.item() != 0:
-                        environment = factory.get_environment(episode_object_amount,
-                                                              environment_initialization_prob_map,
-                                                              pre_located_objects_num,
-                                                              pre_located_objects_location,
-                                                              prohibited_object_locations)
-                # BUG: The object that is reached is not always relocated!!!!
                     satisfaction_tensor = torch.tensor(step_satisfactions)
                     moving_cost_tensor = torch.tensor(step_moving_costs)
                     needs_cost_tensor = torch.tensor(step_needs_costs)
@@ -114,7 +110,8 @@ def training_meta_controller(utility):
                     steps_reward[0, :steps] = (satisfaction_tensor - moving_cost_tensor - needs_cost_tensor).unsqueeze(
                         dim=0)
 
-                    meta_controller.save_experience(env_map_0, need_0, goal_map, steps_reward, steps_tensor,
+                    meta_controller.save_experience(environment_0.env_map, agent_0.need, goal_map, steps_reward,
+                                                    steps_tensor,
                                                     dt_tensor, environment.env_map.clone(), agent.need.clone())
 
                 if goal_reached or steps == params.EPISODE_STEPS:
@@ -123,22 +120,33 @@ def training_meta_controller(utility):
             episode_meta_controller_reward += steps_reward.sum()
             at_loss = meta_controller.optimize(episode=episode)
             episode_meta_controller_loss += get_meta_controller_loss(at_loss)
+            episode_q_function_selected_goal_reward += MetaControllerVisualizer.get_qfunction_selected_goal_map(controller,
+                                                                                                               meta_controller,
+                                                                                                               deepcopy(environment_0),
+                                                                                                               deepcopy(agent_0))
+
         if episode_meta_controller_loss > 0:
             meta_controller.lr_scheduler.step()
         writer.add_scalar("Meta Controller/Loss", episode_meta_controller_loss / params.EPISODE_LEN, episode)
         writer.add_scalar("Meta Controller/Reward", episode_meta_controller_reward / params.EPISODE_LEN, episode)
         gamma_dict = {}
         for g in range(len(meta_controller.gammas)):
-            # writer.add_scalar("Meta Controller/Gamma", meta_controller.gammas[g], episode)
             gamma_dict['gamma_{0}'.format(g)] = meta_controller.gammas[g]
 
         writer.add_scalars(f'Meta Controller/Gamma', gamma_dict, episode)
-
+        writer.add_scalar('Meta Controller/Q-values goal reward',
+                          episode_q_function_selected_goal_reward / params.EPISODE_LEN,
+                          episode)
         if (episode + 1) % params.PRINT_OUTPUT == 0:
             pre_located_objects_location = [[[]]] * params.OBJECT_TYPE_NUM
             pre_located_objects_num = torch.zeros((params.OBJECT_TYPE_NUM,), dtype=torch.int32)
             prohibited_object_locations = []
-            test_environment = factory.get_environment(episode_object_amount,
+            pre_located_agent = [[]]
+            pre_assigned_needs = [[]]
+            test_agent = factory.get_agent(pre_located_agent,
+                                           pre_assigned_needs)
+            test_environment = factory.get_environment(test_agent,
+                                                       episode_object_amount,
                                                        environment_initialization_prob_map,
                                                        pre_located_objects_num,
                                                        pre_located_objects_location,
@@ -149,10 +157,6 @@ def training_meta_controller(utility):
                                                                            controller)
             fig.savefig('{0}/episode_{1}.png'.format(res_folder, episode + 1))
             plt.close()
-
-            # for fig, ax, name in meta_controller_visualizer.policynet_values(test_environment, meta_controller):
-            #     fig.savefig('{0}/{1}.png'.format(res_folder, name))
-            #     plt.close()
 
         if (episode + 1) % params.META_CONTROLLER_TARGET_UPDATE == 0:
             meta_controller.update_target_net()

@@ -29,7 +29,8 @@ def test_meta_controller(utility, meta_controller_dir, test_num=3):
         pre_assigned_needs = [[]]
         test_agent = factory.get_agent(pre_located_agent,
                                        pre_assigned_needs)
-        test_environment = factory.get_environment(episode_object_amount,
+        test_environment = factory.get_environment(test_agent,
+                                                   episode_object_amount,
                                                    environment_initialization_prob_map,
                                                    pre_located_objects_num,
                                                    pre_located_objects_location,

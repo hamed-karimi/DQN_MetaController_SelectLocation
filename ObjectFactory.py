@@ -22,10 +22,10 @@ class ObjectFactory:
                       epsilon_function=self.params.EPSILON_FUNCTION,
                       preassigned_needs=preassigned_needs,
                       lambda_satisfaction=self.params.LAMBDA_SATISFACTION)
-        self.agent = deepcopy(agent)
+        # self.agent = deepcopy(agent)
         return agent
 
-    def get_environment(self, few_many, probability_map, pre_located_objects_num, pre_located_objects_location,
+    def get_environment(self, agent, few_many, probability_map, pre_located_objects_num, pre_located_objects_location,
                         prohibited_object_location):  # pre_located_objects is a 2D list
         curr_frame = inspect.currentframe()
         call_frame = inspect.getouterframes(curr_frame, 2)
@@ -33,27 +33,27 @@ class ObjectFactory:
             num_objects = self.params.OBJECT_TYPE_NUM
         else:
             num_objects = 1
-        env = Environment(few_many, self.params.HEIGHT, self.params.WIDTH, self.agent, probability_map,
+        env = Environment(few_many, self.params.HEIGHT, self.params.WIDTH, agent, probability_map,
                           reward_of_object=self.params.REWARD_OF_OBJECT,
                           far_objects_prob=self.params.PROB_OF_FAR_OBJECTS_FOR_TWO,
                           num_object=num_objects,
                           pre_located_objects_num=pre_located_objects_num,
                           pre_located_objects_location=pre_located_objects_location,
                           prohibited_object_location=prohibited_object_location)
-        self.environment = deepcopy(env)
+        # self.environment = deepcopy(env)
         return env
 
     def get_controller(self):
         controller = Controller(self.params.HEIGHT,
                                 self.params.WIDTH)
 
-        self.controller = deepcopy(controller)
+        # self.controller = deepcopy(controller)
         return controller
 
     def get_meta_controller(self, pre_trained_weights_path=''):
         meta_controller = MetaController(self.params,
                                          pre_trained_weights_path=pre_trained_weights_path)
-        self.meta_controller = deepcopy(meta_controller)
+        # self.meta_controller = deepcopy(meta_controller)
         return meta_controller
 
     def get_saved_objects(self):

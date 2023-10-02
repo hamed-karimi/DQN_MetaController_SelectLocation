@@ -1,12 +1,16 @@
 import itertools
 import math
+from AgentExplorationFunctions import agent_reached_goal
 from Visualizer import Visualizer
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
-from State_batch import State_batch
+from MetaController import MetaController
 from copy import deepcopy
 from matplotlib.ticker import FormatStrFormatter
+from Agent import Agent
+from Environment import Environment
+from Controller import Controller
 
 
 def get_predefined_needs(num_object):
@@ -226,3 +230,28 @@ class MetaControllerVisualizer(Visualizer):
         ax.scatter(agent_location[0, 1], agent_location[0, 0], s=380, facecolors='b', edgecolors='k')
         plt.tight_layout(pad=0.4, w_pad=1, h_pad=1)
         # return ax
+
+    @staticmethod
+    def get_qfunction_selected_goal_map(controller: Controller,
+                                        meta_controller: MetaController,
+                                        environment: Environment,
+                                        agent: Agent):
+
+        goal_map, goal_location = meta_controller.get_goal_map(environment,
+                                                               agent,
+                                                               episode=0,
+                                                               epsilon=-1)  # get the goal map based on Q-values
+        rho = 0
+        while True:
+            agent_goal_map_0 = torch.stack([environment.env_map[:, 0, :, :], goal_map], dim=1)
+
+            action_id = controller.get_action(agent_goal_map_0).clone()
+            satisfaction, moving_cost, needs_cost, dt = agent.take_action(environment, action_id)
+
+            rho += (satisfaction - moving_cost - needs_cost)
+            goal_reached = agent_reached_goal(environment, goal_map)
+
+            if goal_reached:
+                break
+
+        return rho
