@@ -96,6 +96,13 @@ def training_meta_controller(utility):
                                                           pre_located_objects_num,
                                                           pre_located_objects_location,
                                                           prohibited_object_locations)
+
+                    if any(environment.env_map[0, 1:, agent.location[0, 0], agent.location[0, 1]] > 0) and action_id.item() != 0:
+                        environment = factory.get_environment(episode_object_amount,
+                                                              environment_initialization_prob_map,
+                                                              pre_located_objects_num,
+                                                              pre_located_objects_location,
+                                                              prohibited_object_locations)
                 # BUG: The object that is reached is not always relocated!!!!
                     satisfaction_tensor = torch.tensor(step_satisfactions)
                     moving_cost_tensor = torch.tensor(step_moving_costs)

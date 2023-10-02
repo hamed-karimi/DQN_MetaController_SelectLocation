@@ -71,7 +71,7 @@ class Environment:
         for obj_type in range(self.object_type_num):
             for at_obj in range(self.each_type_object_num[obj_type]):
                 if torch.eq(self.object_locations[obj_type, at_obj], torch.tensor([-1, -1])).all():  # not pre-assigned
-                    is_some_object_prohibited = any(prohibited_object_location)
+                    is_some_object_prohibited = len(prohibited_object_location) > 0
                     do = 1
                     while do:
                         hw_range = np.arange(self.height * self.width)

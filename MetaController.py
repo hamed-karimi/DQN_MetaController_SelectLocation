@@ -65,6 +65,7 @@ class MetaController:
         self.gammas = [0.]
         self.gamma_episodes = [0]
         self.gamma_delay_episodes = [0]
+        self.gamma_max_delay = params.GAMMA_CASCADE_DELAY
         self.gamma_reached_max_episode = []
         self.gamma_cascade = params.GAMMA_CASCADE
         self.max_gamma = params.MAX_GAMMA
@@ -86,14 +87,19 @@ class MetaController:
             for g in range(len(self.gammas)):
                 self.gammas[g] = self.gamma_function(self.gamma_episodes[g])
                 self.gamma_episodes[g] += 1
-                # Change: make a delay between the rise of a gamma and the previous one.
-            # if self.gammas[-1] == self.max_gamma and len(self.gamma_reached_max_episode) < len(self.gamma_episodes):
-            #     self.gamma
-            #     self.gammas.append(self.min_gamma)
-            #     self.gamma_episodes.append(0)
-            if self.gammas[-1] == self.max_gamma and len(self.gammas) < self.max_step_num:
+            if self.gammas[-1] == self.max_gamma and len(self.gammas) < self.max_step_num and self.gamma_delay_episodes[-1] < self.gamma_max_delay:
+                self.gamma_delay_episodes[-1] += 1
+
+            if self.gammas[-1] == self.max_gamma and len(self.gammas) < self.max_step_num and self.gamma_delay_episodes[-1] == self.gamma_max_delay:
                 self.gammas.append(self.min_gamma)
                 self.gamma_episodes.append(0)
+                self.gamma_delay_episodes.append(0)
+
+                # Change: make a delay between the rise of a gamma and the previous one.
+                # if self.gammas[-1] == self.max_gamma and len(self.gamma_reached_max_episode) < len(self.gamma_episodes):
+                #     self.gamma
+                #     self.gammas.append(self.min_gamma)
+                #     self.gamma_episodes.append(0)
 
     def get_nonlinear_epsilon(self, episode):
         x = math.log(episode + 1, self.episode_num)
