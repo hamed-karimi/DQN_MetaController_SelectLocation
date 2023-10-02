@@ -5,7 +5,8 @@ import warnings
 
 
 class Environment:
-    def __init__(self, few_many_objects, h, w, agent, probability_map, reward_of_object, far_objects_prob, num_object, pre_located_objects_num, pre_located_objects_location):  # object_type_num is the number of each type of object
+    def __init__(self, few_many_objects, h, w, agent, probability_map, reward_of_object, far_objects_prob, num_object, pre_located_objects_num,
+                 pre_located_objects_location, prohibited_object_location):  # object_type_num is the number of each type of object
         self.each_type_object_num = None
         self.channels = 1 + num_object  # +1 is for agent which is the first layer
         self.height = h
@@ -18,7 +19,7 @@ class Environment:
         self.env_map = torch.zeros((1, self.channels, self.height, self.width),
                                    dtype=torch.float32)  # the 1 is for the env_map can be matched with the dimesions of weights (8, 2, 4, 4)
         self.object_locations = None
-        self.init_object_locations(pre_located_objects_num, pre_located_objects_location)
+        self.init_object_locations(pre_located_objects_num, pre_located_objects_location, prohibited_object_location)
         self.update_agent_location_on_map(agent)
         self.reward_of_object = [reward_of_object] * agent.num_need
         self.cost_of_staying = 0  # this should change for controller
@@ -47,7 +48,7 @@ class Environment:
         object_locations = -1 * torch.ones(self.object_type_num, max_num, 2, dtype=torch.int32)
         return each_type_object_num, object_locations
 
-    def init_objects_randomly(self, pre_located_objects_num, pre_located_objects_location):  # pre_located_objects is a list
+    def init_objects_randomly(self, pre_located_objects_num, pre_located_objects_location, prohibited_object_location):  # pre_located_objects is a list
         # if self.object_type_num == 1:  # for controller
         #     self.object_locations = -1 * torch.ones(self.object_type_num, 1, 2, dtype=torch.int32)
         #     self.each_type_object_num = [1, 0]
@@ -70,11 +71,15 @@ class Environment:
         for obj_type in range(self.object_type_num):
             for at_obj in range(self.each_type_object_num[obj_type]):
                 if torch.eq(self.object_locations[obj_type, at_obj], torch.tensor([-1, -1])).all():  # not pre-assigned
+                    is_some_object_prohibited = any(prohibited_object_location)
                     do = 1
                     while do:
                         hw_range = np.arange(self.height * self.width)
                         rand_num_in_range = random.choices(hw_range, weights=self.probability_map, k=1)[0]
                         sample = torch.tensor([rand_num_in_range // self.width, rand_num_in_range % self.width])
+                        if is_some_object_prohibited:
+                            if torch.eq(sample, prohibited_object_location).all():
+                                continue
                         if sum(self.env_map[0, 1:, sample[0], sample[
                             1]]).item() == 0:  # This location is empty on every object layer as well as the pre-assigned objects
                             self.object_locations[obj_type, at_obj, :] = sample
@@ -106,12 +111,12 @@ class Environment:
 
         return object_locations
 
-    def init_object_locations(self, pre_located_objects_num, pre_located_objects_location):  # Place objects on the map
+    def init_object_locations(self, pre_located_objects_num, pre_located_objects_location, prohibited_object_location): # Place objects on the map
         p = random.uniform(0, 1)
         if p <= self.far_objects_prob:
             return self.init_two_objects_far_from_each_other()
         else:
-            return self.init_objects_randomly(pre_located_objects_num, pre_located_objects_location)
+            return self.init_objects_randomly(pre_located_objects_num, pre_located_objects_location, prohibited_object_location)
 
     def update_agent_location_on_map(self, agent):
         # This is called by the agent (take_action method) after the action is taken

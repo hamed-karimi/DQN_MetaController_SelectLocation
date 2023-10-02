@@ -64,8 +64,11 @@ class MetaController:
         self.BATCH_SIZE = params.META_CONTROLLER_BATCH_SIZE
         self.gammas = [0.]
         self.gamma_episodes = [0]
+        self.gamma_delay_episodes = [0]
+        self.gamma_reached_max_episode = []
         self.gamma_cascade = params.GAMMA_CASCADE
         self.max_gamma = params.MAX_GAMMA
+        self.max_step_num = params.MAX_STEP_NUM
         self.min_gamma = 0
         # self.GAMMA = 0 if self.gamma_cascade else self.max_gamma
         self.batch_size_mul = 3
@@ -83,11 +86,14 @@ class MetaController:
             for g in range(len(self.gammas)):
                 self.gammas[g] = self.gamma_function(self.gamma_episodes[g])
                 self.gamma_episodes[g] += 1
-            if self.gammas[-1] == self.max_gamma and len(self.gammas) < max(self.env_width, self.env_height):
+                # Change: make a delay between the rise of a gamma and the previous one.
+            # if self.gammas[-1] == self.max_gamma and len(self.gamma_reached_max_episode) < len(self.gamma_episodes):
+            #     self.gamma
+            #     self.gammas.append(self.min_gamma)
+            #     self.gamma_episodes.append(0)
+            if self.gammas[-1] == self.max_gamma and len(self.gammas) < self.max_step_num:
                 self.gammas.append(self.min_gamma)
                 self.gamma_episodes.append(0)
-            # self.GAMMA = 1-.99999*(1-self.GAMMA)
-            # self.GAMMA = min(self.GAMMA, self.max_gamma)
 
     def get_nonlinear_epsilon(self, episode):
         x = math.log(episode + 1, self.episode_num)
@@ -182,15 +188,8 @@ class MetaController:
                                                                         # one less than for Q
         discounted_reward = (reward_batch * cum_steps_discounts).sum(dim=1)
 
-        # gammas_tensor = torch.as_tensor(self.gammas)
-        # steps_mask = torch.tile(torch.arange(max(self.env_width, self.env_height), device=self.device),
-        #                         dims=(self.BATCH_SIZE, 1)) < n_steps_batch.unsqueeze(dim=1)
-        # gammas_tile = torch.tile(torch.as_tensor(self.gammas))
-        # q_gamma = torch.prod(torch.as_tensor(self.gammas,
-        #                                      device=self.device).unsqueeze(dim=0), dim=1)
-
         q_gammas = torch.cumprod(steps_discounts[:, 1:], dim=1).gather(dim=1, index=n_steps_batch.unsqueeze(dim=1).long()-1)
-        # [:, n_steps_batch.unsqueeze(dim=1)-1]
+
         expected_goal_values = targetnet_max_goal_value * q_gammas.squeeze() + discounted_reward
 
         criterion = nn.SmoothL1Loss()

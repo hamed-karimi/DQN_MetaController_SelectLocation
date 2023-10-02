@@ -25,7 +25,8 @@ class ObjectFactory:
         self.agent = deepcopy(agent)
         return agent
 
-    def get_environment(self, few_many, probability_map, pre_located_objects_num, pre_located_objects_location):  # pre_located_objects is a 2D list
+    def get_environment(self, few_many, probability_map, pre_located_objects_num, pre_located_objects_location,
+                        prohibited_object_location):  # pre_located_objects is a 2D list
         curr_frame = inspect.currentframe()
         call_frame = inspect.getouterframes(curr_frame, 2)
         if 'meta_controller' in call_frame[1][3]:
@@ -37,7 +38,8 @@ class ObjectFactory:
                           far_objects_prob=self.params.PROB_OF_FAR_OBJECTS_FOR_TWO,
                           num_object=num_objects,
                           pre_located_objects_num=pre_located_objects_num,
-                          pre_located_objects_location=pre_located_objects_location)
+                          pre_located_objects_location=pre_located_objects_location,
+                          prohibited_object_location=prohibited_object_location)
         self.environment = deepcopy(env)
         return env
 
