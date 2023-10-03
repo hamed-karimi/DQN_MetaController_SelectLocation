@@ -72,9 +72,10 @@ class MetaController:
 
     def update_gammas(self):
         if self.gamma_cascade:
-            for g in range(len(self.gammas)):
-                self.gammas[g] = self.gamma_function(self.gamma_episodes[g])
-                self.gamma_episodes[g] += 1
+            if len(self.gammas) <= self.max_step_num:
+                for g in range(len(self.gammas)):
+                    self.gammas[g] = self.gamma_function(self.gamma_episodes[g])
+                    self.gamma_episodes[g] += 1
             if self.gammas[-1] == self.max_gamma and len(self.gammas) < self.max_step_num and self.gamma_delay_episodes[
                 -1] < self.gamma_max_delay:
                 self.gamma_delay_episodes[-1] += 1
