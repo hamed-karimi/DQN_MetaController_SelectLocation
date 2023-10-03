@@ -83,9 +83,6 @@ class Agent:
         return total_need
 
     def take_action(self, environment, action_id):
-        # Consider this for a change: the needs cost is NOT the carried need,
-        # and is the need you end up with after the action
-
         selected_action = environment.allactions[action_id].squeeze()  # to device
         self.location[0, :] += selected_action
         at_cost = environment.get_cost(action_id)
