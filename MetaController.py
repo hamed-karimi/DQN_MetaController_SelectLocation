@@ -179,7 +179,7 @@ class MetaController:
         discounted_reward = (reward_batch * cum_steps_discounts).sum(dim=1)
 
         q_gammas = torch.cumprod(steps_discounts[:, 1:], dim=1).gather(dim=1,
-                                                                       index=n_steps_batch.unsqueeze(dim=1).long() - 1)
+                                                                       index=n_steps_batch.unsqueeze(dim=1).long()-1)
 
         expected_goal_values = targetnet_max_goal_value * q_gammas.squeeze() + discounted_reward
 

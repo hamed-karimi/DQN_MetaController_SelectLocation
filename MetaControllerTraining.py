@@ -64,7 +64,7 @@ def training_meta_controller(utility):
             goal_map, goal_location = meta_controller.get_goal_map(environment,
                                                                    agent,
                                                                    episode)
-            # done = torch.tensor([0])
+            # Take action
             while True:
                 # env_map_0 = environment.env_map.clone()
                 # need_0 = agent.need.clone()
@@ -81,7 +81,7 @@ def training_meta_controller(utility):
                 goal_reached = agent_reached_goal(environment, goal_map)
 
                 steps += 1
-                if goal_reached:  # or steps == params.EPISODE_STEPS:  # taking only the 1st step
+                if goal_reached:
                     pre_located_objects_location, prohibited_object_locations = update_pre_located_objects(
                         environment.object_locations,
                         agent.location,
