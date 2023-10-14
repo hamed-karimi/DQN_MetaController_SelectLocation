@@ -1,8 +1,12 @@
+import os.path
+from os.path import exists as pexists
+from os.path import join as pjoin
 import matplotlib.pyplot as plt
 import numpy as np
 from copy import deepcopy
-
+import pickle
 import torch
+import dill
 from torch.utils.tensorboard import SummaryWriter
 from MetaControllerVisualizer import MetaControllerVisualizer
 from ObjectFactory import ObjectFactory
@@ -11,10 +15,8 @@ from AgentExplorationFunctions import *
 
 def training_meta_controller(utility):
     params = utility.params
-
     res_folder = utility.make_res_folder(sub_folder='MetaController')
-    # utility.save_training_config()
-    # writer = SummaryWriter(log_dir='CascadeRuns/{0}'.format(res_folder.split('\\')[0]))
+    start_episode = utility.get_start_episode()
     writer = SummaryWriter()
     factory = ObjectFactory(utility)
     controller = factory.get_controller()
@@ -22,7 +24,7 @@ def training_meta_controller(utility):
     meta_controller_visualizer = MetaControllerVisualizer(utility)
     environment_initialization_prob_map = np.ones(params.HEIGHT * params.WIDTH) * 100 / (params.HEIGHT * params.WIDTH)
 
-    for episode in range(params.META_CONTROLLER_EPISODE_NUM):
+    for episode in range(start_episode, params.META_CONTROLLER_EPISODE_NUM):
         episode_begin = True
         episode_q_function_selected_goal_reward = 0
         episode_meta_controller_reward = 0
@@ -120,10 +122,11 @@ def training_meta_controller(utility):
             episode_meta_controller_reward += steps_reward.sum()
             at_loss = meta_controller.optimize(episode=episode)
             episode_meta_controller_loss += get_meta_controller_loss(at_loss)
-            episode_q_function_selected_goal_reward += MetaControllerVisualizer.get_qfunction_selected_goal_map(controller,
-                                                                                                               meta_controller,
-                                                                                                               deepcopy(environment_0),
-                                                                                                               deepcopy(agent_0))
+            episode_q_function_selected_goal_reward += MetaControllerVisualizer.get_qfunction_selected_goal_map(
+                controller,
+                meta_controller,
+                deepcopy(environment_0),
+                deepcopy(agent_0))
 
         if episode_meta_controller_loss > 0:
             meta_controller.lr_scheduler.step()
@@ -161,5 +164,28 @@ def training_meta_controller(utility):
         if (episode + 1) % params.META_CONTROLLER_TARGET_UPDATE == 0:
             meta_controller.update_target_net()
             print('META CONTROLLER TARGET NET UPDATED')
+        if (episode + 1) % params.CHECKPOINT_SAVE_FREQUENCY == 0:
+            checkpoints_dir = pjoin(res_folder, 'checkpoints')
+            if not pexists(checkpoints_dir):
+                os.mkdir(checkpoints_dir)
+            torch.save(meta_controller.policy_net.state_dict(),
+                       os.path.join(checkpoints_dir, 'policynet_checkpoint.pt'))
+            torch.save(meta_controller.target_net.state_dict(),
+                       os.path.join(checkpoints_dir, 'targetnet_checkpoint.pt'))
+            with open(pjoin(checkpoints_dir, 'memory.pkl'), 'wb') as f:
+                dill.dump(meta_controller.memory.memory, f)
+            meta_controller_dict = {'gammas': meta_controller.gammas,
+                                    'gamma_delay_episode': meta_controller.gamma_delay_episodes,
+                                    'gamma_episodes': meta_controller.gamma_episodes,
+                                    'all_gammas_ramped_up': meta_controller.all_gammas_ramped_up}
+            with open(pjoin(checkpoints_dir, 'meta_controller.pkl'), 'wb') as fp:
+                pickle.dump(meta_controller_dict, fp)
 
+            train_dict = {'episode': episode}
+            with open(pjoin(checkpoints_dir, 'train.pkl'), 'wb') as fp:
+                pickle.dump(train_dict, fp)
+            for q_i, Q in enumerate(meta_controller.saved_target_nets):
+                torch.save(Q.state_dict(), os.path.join(checkpoints_dir, 'Q_{0}_checkpoint.pt'.format(q_i)))
+
+            # save memory, epsilon, gammas, Qs,
     return meta_controller, res_folder

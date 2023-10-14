@@ -1,3 +1,6 @@
+import pickle
+import dill
+from copy import deepcopy
 import random
 from torch import optim
 import torch
@@ -7,6 +10,8 @@ from ReplayMemory import ReplayMemory
 from collections import namedtuple
 from torch import nn
 import math
+from os.path import join as pjoin
+from os.path import exists as pexists
 
 
 class MetaControllerMemory(ReplayMemory):
@@ -50,18 +55,37 @@ class MetaController:
                                              lambda epoch: 1 / (1 + params.LEARNING_RATE_DECAY * epoch),
                                              last_epoch=-1, verbose=False)
         self.BATCH_SIZE = params.META_CONTROLLER_BATCH_SIZE
-        self.gammas = [0.]
-        self.gamma_episodes = [0]
+        self.gammas = []
+        self.gamma_episodes = []
         self.gamma_delay_episodes = [0]
         self.gamma_max_delay = params.GAMMA_CASCADE_DELAY
-        self.gamma_reached_max_episode = []
         self.gamma_cascade = params.GAMMA_CASCADE
         self.max_gamma = params.MAX_GAMMA
         self.max_step_num = params.MAX_STEP_NUM
         self.min_gamma = 0
+        self.all_gammas_ramped_up = False
+        self.saved_target_nets = nn.ModuleList()
         # self.GAMMA = 0 if self.gamma_cascade else self.max_gamma
         self.batch_size_mul = 3
         self.epsilon_list = []
+        if params.CHECKPOINTS_DIR != "":
+            self.initialize_from_checkpoint(params.CHECKPOINTS_DIR)
+
+    def initialize_from_checkpoint(self, checkpoint_dir):
+        self.policy_net.load_state_dict(torch.load(pjoin(checkpoint_dir, 'policynet_checkpoint.pt')))
+        self.target_net.load_state_dict(torch.load(pjoin(checkpoint_dir, 'targetnet_checkpoint.pt')))
+        with open(pjoin(checkpoint_dir, 'meta_controller.pkl'), 'rb') as f1:
+            checkpoint_dict = pickle.load(f1)
+            self.gammas = checkpoint_dict['gammas']
+            self.gamma_episodes = checkpoint_dict['gamma_episodes']
+            self.gamma_delay_episodes = checkpoint_dict['gamma_delay_episode']
+            self.all_gammas_ramped_up = checkpoint_dict['all_gammas_ramped_up']
+        for q_i in range(len(self.gammas) - 1):
+            Q = deepcopy(self.target_net)
+            Q.load_state_dict(torch.load(pjoin(checkpoint_dir, 'Q_{0}_checkpoint.pt'.format(q_i))))
+            self.saved_target_nets.append(deepcopy(Q))
+        with open(pjoin(checkpoint_dir, 'memory.pkl'), 'rb') as f2:
+            self.memory.memory = dill.load(f2)
 
     def gamma_function(self, episode):
         m = 2
@@ -76,15 +100,20 @@ class MetaController:
                 for g in range(len(self.gammas)):
                     self.gammas[g] = self.gamma_function(self.gamma_episodes[g])
                     self.gamma_episodes[g] += 1
-            if self.gammas[-1] == self.max_gamma and len(self.gammas) < self.max_step_num and self.gamma_delay_episodes[
-                -1] < self.gamma_max_delay:
+            if ((len(self.gammas) > 0 and self.gammas[-1] == self.max_gamma) or (len(self.gammas) == 0)) \
+                    and len(self.gammas) < self.max_step_num and self.gamma_delay_episodes[-1] < self.gamma_max_delay:
                 self.gamma_delay_episodes[-1] += 1
 
-            if self.gammas[-1] == self.max_gamma and len(self.gammas) < self.max_step_num and self.gamma_delay_episodes[
-                -1] == self.gamma_max_delay:
+            elif ((0 < len(self.gammas) < self.max_step_num and self.gammas[-1] == self.max_gamma) or len(self.gammas) == 0) and \
+                    self.gamma_delay_episodes[-1] == self.gamma_max_delay:
+                self.update_target_net()
+                self.saved_target_nets.append(deepcopy(self.target_net))
                 self.gammas.append(self.min_gamma)
                 self.gamma_episodes.append(0)
                 self.gamma_delay_episodes.append(0)
+            if len(self.gammas) > 0 and self.gammas[-1] == self.max_gamma and len(self.gammas) == self.max_step_num:
+                # all gammas ramped up completely
+                self.all_gammas_ramped_up = True
 
     def get_nonlinear_epsilon(self, episode):
         x = math.log(episode + 1, self.episode_num)
@@ -92,7 +121,6 @@ class MetaController:
         return epsilon
 
     def get_linear_epsilon(self, episode):
-        # return 1-self.gammas[-1]
         epsilon = self.EPS_START - (episode / self.episode_num) * \
                   (self.EPS_START - self.EPS_END)
         return epsilon
@@ -159,13 +187,7 @@ class MetaController:
 
         policynet_goal_values_of_initial_state = self.policy_net(initial_map_batch,
                                                                  initial_need_batch).to(self.device)
-        targetnet_goal_values_of_final_state = self.target_net(final_map_batch,
-                                                               final_need_batch).to(self.device)
 
-        targetnet_goal_values_of_final_state[final_map_object_mask_batch < 1] = -math.inf
-
-        targetnet_max_goal_value = torch.amax(targetnet_goal_values_of_final_state,
-                                              dim=(1, 2)).detach().float()
         goal_values_of_selected_goals = policynet_goal_values_of_initial_state[goal_map_batch == 1]
 
         steps_discounts = torch.zeros(reward_batch.shape,
@@ -175,14 +197,35 @@ class MetaController:
                                      steps_discounts], dim=1)  # step reward is not discounted
 
         cum_steps_discounts = torch.cumprod(steps_discounts, dim=1)[:, :-1]  # step reward is not discounted, so the
-                                                                             # num of gammas for discounting rewards is
-                                                                             # one less than for Q
+        # num of gammas for discounting rewards is
+        # one less than for Q
         discounted_reward = (reward_batch * cum_steps_discounts).sum(dim=1)
 
         q_gammas = torch.cumprod(steps_discounts[:, 1:], dim=1).gather(dim=1,
-                                                                       index=n_steps_batch.unsqueeze(dim=1).long()-1)
+                                                                       index=n_steps_batch.unsqueeze(dim=1).long() - 1)
+        # q_gammas = torch.cumprod(steps_discounts, dim=1).gather(dim=1,
+        #                                                         index=n_steps_batch.unsqueeze(dim=1).long())
+        if not self.all_gammas_ramped_up:
+            targetnet_goal_values_of_final_state = torch.zeros_like(policynet_goal_values_of_initial_state)
+            all_targetnets = deepcopy(self.saved_target_nets)
+            all_targetnets.append(self.target_net)
+            outlook = len(self.gammas) + 1
+            remaining_steps = outlook - n_steps_batch
+            for e in range(self.BATCH_SIZE):
+                if remaining_steps[e] - 1 >= 0:
+                    which_q = remaining_steps[e] - 1
+                    targetnet_goal_values_of_final_state[e, :, :] = all_targetnets[which_q](
+                        final_map_batch[e].unsqueeze(0),
+                        final_need_batch[e].unsqueeze(0)).to(self.device)
+        else:
+            targetnet_goal_values_of_final_state = self.target_net(final_map_batch,
+                                                                   final_need_batch).to(self.device)
 
-        expected_goal_values = targetnet_max_goal_value * q_gammas.squeeze() + discounted_reward
+        targetnet_goal_values_of_final_state[final_map_object_mask_batch < 1] = -math.inf
+        targetnet_max_goal_value = torch.amax(targetnet_goal_values_of_final_state,
+                                              dim=(1, 2)).detach().float()
+
+        expected_goal_values = discounted_reward + targetnet_max_goal_value * q_gammas.squeeze()
 
         criterion = nn.SmoothL1Loss()
         loss = criterion(goal_values_of_selected_goals, expected_goal_values)
