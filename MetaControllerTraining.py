@@ -171,7 +171,7 @@ def training_meta_controller(utility):
                        os.path.join(checkpoints_dir, 'policynet_checkpoint.pt'))
             torch.save(meta_controller.target_net.state_dict(),
                        os.path.join(checkpoints_dir, 'targetnet_checkpoint.pt'))
-            with open(pjoin(checkpoints_dir, 'memory.pkl'), 'wb') as f:
+            with open(pjoin(checkpoints_dir, 'memory_episode_{0}.pkl'.format(episode)), 'wb') as f:
                 dill.dump(meta_controller.memory.memory, f)
             meta_controller_dict = {'gammas': meta_controller.gammas,
                                     'gamma_delay_episode': meta_controller.gamma_delay_episodes,
