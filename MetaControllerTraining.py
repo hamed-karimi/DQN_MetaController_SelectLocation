@@ -62,7 +62,6 @@ def training_meta_controller(utility):
 
             environment_0 = deepcopy(environment)
             agent_0 = deepcopy(agent)
-            # need_0 = agent.need.clone()
             goal_map, goal_location = meta_controller.get_goal_map(environment,
                                                                    agent,
                                                                    episode)

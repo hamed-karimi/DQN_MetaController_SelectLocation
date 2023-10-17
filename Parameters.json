@@ -29,5 +29,5 @@
     "FIRST_STEP_SAMPLING_RATIO": 0,
     "TRAIN_META_CONTROLLER": true,
     "TEST_Q_VALUES": true,
-    "CHECKPOINTS_DIR": ""
+    "CHECKPOINTS_DIR": "./tr2023-10-14_09-57-36/MetaController/checkpoints"
 }
