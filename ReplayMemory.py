@@ -7,14 +7,22 @@ import torch
 
 
 class ReplayMemory():
-    def __init__(self, capacity, first_steps_sample_ratio):
+    def __init__(self, capacity, checkpoint_memory=None, checkpoint_weights=None, memory_size=0):
         # self.memory = deque([], maxlen=capacity)
         # self.weights = deque([], maxlen=capacity)
         self.max_len = capacity
-        self.memory_size = 0
-        self.weights_size = 0
-        self.memory = np.zeros((self.max_len, ), dtype=object)
-        self.weights = np.zeros((self.max_len, ), dtype=np.float)
+        if checkpoint_memory is None:
+            self.memory_size = 0
+            self.weights_size = 0
+            self.memory = np.zeros((self.max_len, ), dtype=object)
+            self.weights = np.zeros((self.max_len, ), dtype=np.float)
+        else:
+            self.memory = checkpoint_memory
+            self.weights = checkpoint_weights
+            self.memory_size = memory_size
+            self.weights_size = memory_size
+        print('memory size: ', self.memory_size)
+            ## continue this, also save weights, also save memory_size and weights_size, also print out the details when loading from checkpoint
 
         # self.early_memory = deque([], maxlen=capacity//2)
         # self.later_memory = deque([], maxlen=capacity//2)
@@ -24,7 +32,6 @@ class ReplayMemory():
         # self.first_steps_sample_ratio = first_steps_sample_ratio
         # self.memory_pointer = {'early': lambda _: (self.early_memory, self.early_memory_weights),
         #                        'later': lambda _: (self.later_memory, self.later_memory_weights)}
-
     def get_transition(self, *args):
         pass
 

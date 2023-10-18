@@ -15,9 +15,11 @@ from os.path import exists as pexists
 
 
 class MetaControllerMemory(ReplayMemory):
-    def __init__(self, capacity, first_steps_sample_ratio):
+    def __init__(self, capacity, checkpoint_memory=None, checkpoint_weights=None, memory_size=0):
         super().__init__(capacity=capacity,
-                         first_steps_sample_ratio=first_steps_sample_ratio)
+                         checkpoint_memory=checkpoint_memory,
+                         checkpoint_weights=checkpoint_weights,
+                         memory_size=memory_size)
 
     def get_transition(self, *args):
         Transition = namedtuple('Transition',
@@ -40,8 +42,6 @@ class MetaController:
             self.policy_net.apply(weights_init_orthogonal)
         self.target_net = hDQN(params).to(self.device)
         self.target_net.load_state_dict(self.policy_net.state_dict())
-        self.memory = MetaControllerMemory(params.META_CONTROLLER_MEMORY_CAPACITY,
-                                           params.FIRST_STEP_SAMPLING_RATIO)
 
         self.object_type_num = params.OBJECT_TYPE_NUM
         self.steps_done = 0
@@ -69,9 +69,12 @@ class MetaController:
         self.batch_size_mul = 3
         self.epsilon_list = []
         if params.CHECKPOINTS_DIR != "":
-            self.initialize_from_checkpoint(params.CHECKPOINTS_DIR)
+            self.initialize_from_checkpoint(params)
+        else:
+            self.memory = MetaControllerMemory(params.META_CONTROLLER_MEMORY_CAPACITY)
 
-    def initialize_from_checkpoint(self, checkpoint_dir):
+    def initialize_from_checkpoint(self, params):
+        checkpoint_dir = params.CHECKPOINTS_DIR
         self.policy_net.load_state_dict(torch.load(pjoin(checkpoint_dir, 'policynet_checkpoint.pt')))
         self.target_net.load_state_dict(torch.load(pjoin(checkpoint_dir, 'targetnet_checkpoint.pt')))
         with open(pjoin(checkpoint_dir, 'meta_controller.pkl'), 'rb') as f1:
@@ -84,8 +87,18 @@ class MetaController:
             Q = deepcopy(self.target_net)
             Q.load_state_dict(torch.load(pjoin(checkpoint_dir, 'Q_{0}_checkpoint.pt'.format(q_i))))
             self.saved_target_nets.append(deepcopy(Q))
+
         with open(pjoin(checkpoint_dir, 'memory.pkl'), 'rb') as f2:
-            self.memory.memory = dill.load(f2)
+            memory = dill.load(f2)
+        with open(pjoin(checkpoint_dir, 'weights.pkl'), 'rb') as f3:
+            weights = dill.load(f3)
+        with open(pjoin(checkpoint_dir, 'train.pkl'), 'rb') as f4:
+            train_dict = pickle.load(f4)
+            last_episode = train_dict['episode']
+        self.memory = MetaControllerMemory(params.META_CONTROLLER_MEMORY_CAPACITY,
+                                           checkpoint_memory=memory,
+                                           checkpoint_weights=weights,
+                                           memory_size=last_episode+1)
 
     def gamma_function(self, episode):
         m = 2

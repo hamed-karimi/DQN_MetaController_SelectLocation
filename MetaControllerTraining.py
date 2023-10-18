@@ -16,7 +16,8 @@ from AgentExplorationFunctions import *
 def training_meta_controller(utility):
     params = utility.params
     res_folder = utility.make_res_folder(sub_folder='MetaController')
-    start_episode = utility.get_start_episode()
+    start_episode = utility.get_start_episode() + 1
+    print('start episode: ', start_episode)
     writer = SummaryWriter()
     factory = ObjectFactory(utility)
     controller = factory.get_controller()
@@ -173,6 +174,9 @@ def training_meta_controller(utility):
                        os.path.join(checkpoints_dir, 'targetnet_checkpoint.pt'))
             with open(pjoin(checkpoints_dir, 'memory_episode_{0}.pkl'.format(episode)), 'wb') as f:
                 dill.dump(meta_controller.memory.memory, f)
+            with open(pjoin(checkpoints_dir, 'memory_weights_episode_{0}.pkl'.format(episode)), 'wb') as f:
+                dill.dump(meta_controller.memory.weights, f)
+
             meta_controller_dict = {'gammas': meta_controller.gammas,
                                     'gamma_delay_episode': meta_controller.gamma_delay_episodes,
                                     'gamma_episodes': meta_controller.gamma_episodes,
