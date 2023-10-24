@@ -30,6 +30,9 @@ class Controller:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.height = height
         self.width = width
+        # self.all_actions = np.array([[0, 0],
+        #                              [1, 0], [-1, 0], [0, 1], [0, -1]])
+
         self.all_actions = np.array([[0, 0],
                                      [1, 0], [-1, 0], [0, 1], [0, -1],
                                      [1, 1], [-1, -1], [-1, 1], [1, -1]])

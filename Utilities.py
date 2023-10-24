@@ -27,17 +27,17 @@ class Utilities:
         shutil.copy('./Parameters.json', self.res_folder)
         return dirname
 
-    def get_environment_probability_map(self, style, params):  # style: 'equal', or 'edges'
-        if style == 'equal':
-            prob_map = np.ones(params.HEIGHT * params.WIDTH) * 100 / (params.HEIGHT * params.WIDTH)
-        elif style == 'edges':
-            prob_map = np.ones((params.HEIGHT, params.WIDTH))
-            prob_map[[0, params.WIDTH - 1], :] *= 3
-            prob_map[1:-1, [0, params.HEIGHT - 1]] *= 3
+    # def get_environment_probability_map(self, style):  # style: 'equal', or 'edges'
+    #     if style == 'equal':
+    #         prob_map = np.ones(self.params.HEIGHT * self.params.WIDTH) * 100 / (self.params.HEIGHT * self.params.WIDTH)
+    #     elif style == 'edges':
+    #         prob_map = np.ones((self.params.HEIGHT, self.params.WIDTH))
+    #         prob_map[[0, self.params.WIDTH - 1], :] *= 3
+    #         prob_map[1:-1, [0, self.params.HEIGHT - 1]] *= 3
 
-    def get_start_episode(self):
+    def get_last_episode(self):
         if self.params.CHECKPOINTS_DIR != "":
             with open(os.path.join(self.params.CHECKPOINTS_DIR, 'train.pkl'), 'rb') as f:
                 train_dict = pickle.load(f)
                 return train_dict['episode']
-        return 0
+        return -1

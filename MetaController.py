@@ -67,7 +67,7 @@ class MetaController:
         self.saved_target_nets = nn.ModuleList()
         # self.GAMMA = 0 if self.gamma_cascade else self.max_gamma
         self.batch_size_mul = 3
-        self.epsilon_list = []
+        # self.epsilon_list = []
         if params.CHECKPOINTS_DIR != "":
             self.initialize_from_checkpoint(params)
         else:
@@ -98,7 +98,7 @@ class MetaController:
         self.memory = MetaControllerMemory(params.META_CONTROLLER_MEMORY_CAPACITY,
                                            checkpoint_memory=memory,
                                            checkpoint_weights=weights,
-                                           memory_size=last_episode+1)
+                                           memory_size=last_episode + 1)
 
     def gamma_function(self, episode):
         m = 2
@@ -117,7 +117,8 @@ class MetaController:
                     and len(self.gammas) < self.max_step_num and self.gamma_delay_episodes[-1] < self.gamma_max_delay:
                 self.gamma_delay_episodes[-1] += 1
 
-            elif ((0 < len(self.gammas) < self.max_step_num and self.gammas[-1] == self.max_gamma) or len(self.gammas) == 0) and \
+            elif ((0 < len(self.gammas) < self.max_step_num and self.gammas[-1] == self.max_gamma) or len(
+                    self.gammas) == 0) and \
                     self.gamma_delay_episodes[-1] == self.gamma_max_delay:
                 self.update_target_net()
                 self.saved_target_nets.append(deepcopy(self.target_net))
@@ -144,7 +145,7 @@ class MetaController:
         if epsilon is None:
             epsilon = self.get_linear_epsilon(episode)
 
-        self.epsilon_list.append(epsilon)
+        # self.epsilon_list.append(epsilon)
         e = random.random()
         all_object_locations = torch.stack(torch.where(environment.env_map[0, 1:, :, :]), dim=1)
         if e < epsilon:  # random (goal or stay)
@@ -167,8 +168,7 @@ class MetaController:
                 output_values[object_mask < 1] = -math.inf
                 goal_location = torch.where(torch.eq(output_values, output_values.max()))
                 goal_location = torch.as_tensor([ll[0] for ll in goal_location][1:])
-                # goal_type = torch.where(environment.env_map[0, :, goal_location[0, 0], goal_location[0, 1]])[0]
-                # goal_type -= 1  # first layer is agent layer but goal index starts from 0
+
         goal_map[0, goal_location[0], goal_location[1]] = 1
         self.steps_done += 1
         return goal_map, goal_location  # , goal_type
@@ -224,12 +224,22 @@ class MetaController:
             all_targetnets.append(self.target_net)
             outlook = len(self.gammas) + 1
             remaining_steps = outlook - n_steps_batch
-            for e in range(self.BATCH_SIZE):
-                if remaining_steps[e] - 1 >= 0:
-                    which_q = remaining_steps[e] - 1
-                    targetnet_goal_values_of_final_state[e, :, :] = all_targetnets[which_q](
-                        final_map_batch[e].unsqueeze(0),
-                        final_need_batch[e].unsqueeze(0)).to(self.device)
+
+            # for e in range(self.BATCH_SIZE):
+            #     if remaining_steps[e] - 1 >= 0:
+            #         which_q = remaining_steps[e] - 1
+            #         targetnet_goal_values_of_final_state[e, :, :] = all_targetnets[which_q](
+            #             final_map_batch[e].unsqueeze(0),
+            #             final_need_batch[e].unsqueeze(0)).to(self.device)
+
+            have_remaining_steps = remaining_steps > 0
+            which_q = -1 * torch.ones_like(have_remaining_steps, dtype=torch.int32)
+            which_q[have_remaining_steps] = remaining_steps[have_remaining_steps] - 1
+            for q_i in range(len(all_targetnets)):
+                use_q_i = (which_q == q_i)
+                targetnet_goal_values_of_final_state[use_q_i, :, :] = all_targetnets[q_i](final_map_batch[use_q_i],
+                                                                                          final_need_batch[use_q_i])
+
         else:
             targetnet_goal_values_of_final_state = self.target_net(final_map_batch,
                                                                    final_need_batch).to(self.device)

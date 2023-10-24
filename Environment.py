@@ -36,7 +36,7 @@ class Environment:
         # e.g., self.few_many_objects : ['few', 'many']
         few_range = np.array([1, 2])
         # few_range = np.array([2])
-        many_range = np.array([3, 4, 5])
+        many_range = np.array([3, 4])
         ranges = {'few': few_range,
                   'many': many_range}
         max_num = -1

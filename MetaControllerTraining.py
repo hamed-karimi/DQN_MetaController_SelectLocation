@@ -16,7 +16,7 @@ from AgentExplorationFunctions import *
 def training_meta_controller(utility):
     params = utility.params
     res_folder = utility.make_res_folder(sub_folder='MetaController')
-    start_episode = utility.get_start_episode() + 1
+    start_episode = utility.get_last_episode() + 1
     print('start episode: ', start_episode)
     writer = SummaryWriter()
     factory = ObjectFactory(utility)
@@ -88,6 +88,7 @@ def training_meta_controller(utility):
                         environment.object_locations,
                         agent.location,
                         goal_reached)
+
                     pre_located_objects_num = environment.each_type_object_num
                     pre_located_agent = agent.location.tolist()
                     pre_assigned_needs = agent.need.tolist()
@@ -108,6 +109,7 @@ def training_meta_controller(utility):
                     dt_tensor = torch.tensor(step_dt).unsqueeze(dim=0).sum(dim=1)
                     steps_tensor = torch.tensor([steps], dtype=torch.int32)
 
+                    # steps_reward = torch.zeros(1, params.HEIGHT + params.WIDTH - 2)
                     steps_reward = torch.zeros(1, max(params.HEIGHT, params.WIDTH))
                     steps_reward[0, :steps] = (satisfaction_tensor - moving_cost_tensor - needs_cost_tensor).unsqueeze(
                         dim=0)
