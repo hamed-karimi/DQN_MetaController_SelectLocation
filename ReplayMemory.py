@@ -56,8 +56,11 @@ class ReplayMemory():
     def weighted_sample_without_replacement(self, k):
         sample = np.random.choice(self.memory[:self.memory_size],
                                   size=k,
-                                  replace=False,
-                                  p=self.weights_exp[:self.weights_size] / self.weights_exp_sum)
+                                  replace=False)
+        # sample = np.random.choice(self.memory[:self.memory_size],
+        #                           size=k,
+        #                           replace=False,
+        #                           p=self.weights_exp[:self.weights_size] / self.weights_exp_sum)
         # np.exp(self.weights[:self.memory_size])
         # sum(np.exp(self.weights[:self.memory_size]))
         return sample
