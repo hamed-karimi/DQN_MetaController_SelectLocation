@@ -182,7 +182,7 @@ class MetaController:
     def update_target_net(self):
         self.target_net.load_state_dict(self.policy_net.state_dict())
 
-    def optimize(self, episode):
+    def optimize(self):
         if self.memory.__len__() < self.BATCH_SIZE * self.batch_size_mul:
             return float('nan')
         transition_sample = self.memory.sample(self.BATCH_SIZE)

@@ -122,7 +122,7 @@ def training_meta_controller(utility):
                     break
 
             episode_meta_controller_reward += steps_reward.mean()
-            at_loss = meta_controller.optimize(episode=episode)
+            at_loss = meta_controller.optimize()
             episode_meta_controller_loss += get_meta_controller_loss(at_loss)
             episode_q_function_selected_goal_reward += MetaControllerVisualizer.get_qfunction_selected_goal_map(
                 controller,

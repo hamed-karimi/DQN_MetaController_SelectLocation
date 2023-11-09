@@ -16,22 +16,17 @@ class ReplayMemory():
             self.weights_size = 0
             self.memory = np.zeros((self.max_len, ), dtype=object)
             self.weights = np.zeros((self.max_len, ), dtype=np.float)
+            self.weights_exp_sum = 0
+            self.weights_exp = np.ones((self.max_len, ))
         else:
             self.memory = checkpoint_memory
             self.weights = checkpoint_weights
             self.memory_size = memory_size
             self.weights_size = memory_size
+            self.weights_exp_sum = sum(np.exp(self.weights[:self.memory_size]))
+            self.weights_exp = np.exp(self.weights[:self.memory_size])
         print('memory size: ', self.memory_size)
-            ## continue this, also save weights, also save memory_size and weights_size, also print out the details when loading from checkpoint
 
-        # self.early_memory = deque([], maxlen=capacity//2)
-        # self.later_memory = deque([], maxlen=capacity//2)
-
-        # self.early_memory_weights = deque([], maxlen=capacity // 2)
-        # self.later_memory_weights = deque([], maxlen=capacity // 2)
-        # self.first_steps_sample_ratio = first_steps_sample_ratio
-        # self.memory_pointer = {'early': lambda _: (self.early_memory, self.early_memory_weights),
-        #                        'later': lambda _: (self.later_memory, self.later_memory_weights)}
     def get_transition(self, *args):
         pass
 
@@ -43,32 +38,28 @@ class ReplayMemory():
             self.memory[self.memory_size] = self.get_transition(*args)
             self.memory_size += 1
 
-        # self.memory.append(self.get_transition(*args))
-
-        # if len(self.early_memory) < self.early_memory.maxlen:
-        #     self.early_memory.append(self.get_transition(*args))
-        # else:
-        #     self.later_memory.append(self.get_transition(*args))
-
     def push_selection_ratio(self, **kwargs):
         if self.weights_size == self.max_len:
+            self.weights_exp_sum = self.weights_exp_sum - np.exp(self.weights[0]) + np.exp(kwargs['selection_ratio'])
+
+            self.weights_exp[:-1] = self.weights_exp[1:]
+            self.weights_exp[-1] = np.exp(kwargs['selection_ratio'])
+
             self.weights[:-1] = self.weights[1:]
             self.weights[-1] = kwargs['selection_ratio']
         else:
+            self.weights_exp_sum += np.exp(kwargs['selection_ratio'])
+            self.weights_exp[self.weights_size] = np.exp(kwargs['selection_ratio'])
             self.weights[self.weights_size] = kwargs['selection_ratio']
             self.weights_size += 1
-        # self.weights.append(kwargs['selection_ratio'])
 
-        # if len(self.early_memory) < self.early_memory.maxlen:
-        #     self.early_memory_weights.append(kwargs['selection_ratio'])
-        # else:
-        #     self.later_memory_weights.append(kwargs['selection_ratio'])
-
-    def weighted_sample_without_replacement(self, k, rng=random):
+    def weighted_sample_without_replacement(self, k):
         sample = np.random.choice(self.memory[:self.memory_size],
                                   size=k,
                                   replace=False,
-                                  p=np.exp(self.weights[:self.memory_size]) / sum(np.exp(self.weights[:self.memory_size])))
+                                  p=self.weights_exp[:self.weights_size] / self.weights_exp_sum)
+        # np.exp(self.weights[:self.memory_size])
+        # sum(np.exp(self.weights[:self.memory_size]))
         return sample
         # v = [rng.random() ** (1 / w) for w in self.weights]
         # order = sorted(range(len(self.memory)), key=lambda i: v[i])
