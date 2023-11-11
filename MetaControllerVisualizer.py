@@ -241,7 +241,7 @@ class MetaControllerVisualizer(Visualizer):
                                                                agent,
                                                                episode=0,
                                                                epsilon=-1)  # get the goal map based on Q-values
-        rho = torch.tensor(0)
+        rho = torch.tensor(0, dtype=torch.float)
         while True:
             agent_goal_map_0 = torch.stack([environment.env_map[:, 0, :, :], goal_map], dim=1)
 
