@@ -241,17 +241,18 @@ class MetaControllerVisualizer(Visualizer):
                                                                agent,
                                                                episode=0,
                                                                epsilon=-1)  # get the goal map based on Q-values
-        rho = torch.tensor(0, dtype=torch.float)
+        # rho = torch.tensor(0, dtype=torch.float)
+        rho = []
         while True:
             agent_goal_map_0 = torch.stack([environment.env_map[:, 0, :, :], goal_map], dim=1)
 
             action_id = controller.get_action(agent_goal_map_0).clone()
             satisfaction, moving_cost, needs_cost, dt = agent.take_action(environment, action_id)
 
-            rho += (satisfaction - moving_cost - needs_cost)
+            rho.append(satisfaction - moving_cost - needs_cost)
             goal_reached = agent_reached_goal(environment, goal_map)
 
             if goal_reached:
                 break
 
-        return rho.mean()
+        return torch.tensor(rho).mean()
