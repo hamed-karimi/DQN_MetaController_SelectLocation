@@ -8,61 +8,64 @@ import torch
 
 class ReplayMemory():
     def __init__(self, capacity, checkpoint_memory=None, checkpoint_weights=None, memory_size=0):
-        # self.memory = deque([], maxlen=capacity)
-        # self.weights = deque([], maxlen=capacity)
+        # We keep track of the number of experiences,
+        # and we overwrite the early experiences by the later,
+        # after episode_num reaches max capacity
         self.max_len = capacity
         if checkpoint_memory is None:
-            self.memory_size = 0
-            self.weights_size = 0
+            self.experience_index = 0
+            # self.weights_size = 0
             self.memory = np.zeros((self.max_len, ), dtype=object)
-            self.weights = np.zeros((self.max_len, ), dtype=np.float)
-            self.weights_exp_sum = 0
-            self.weights_exp = np.ones((self.max_len, ))
+            # self.weights = np.zeros((self.max_len, ), dtype=np.float)
+            # self.weights_exp_sum = 0
+            # self.weights_exp = np.ones((self.max_len, ))
         else:
             self.memory = checkpoint_memory
-            self.weights = checkpoint_weights
-            self.memory_size = memory_size
-            self.weights_size = memory_size
-            self.weights_exp_sum = sum(np.exp(self.weights[:self.memory_size]))
-            self.weights_exp = np.exp(self.weights[:self.memory_size])
-        print('memory size: ', self.memory_size)
+            # self.weights = checkpoint_weights
+            self.experience_index = memory_size
+            # self.weights_size = experience_index
+            # self.weights_exp_sum = sum(np.exp(self.weights[:self.experience_index]))
+            # self.weights_exp = np.exp(self.weights[:self.experience_index])
+        print('memory size: ', self.experience_index)
 
     def get_transition(self, *args):
         pass
 
     def push_experience(self, *args):
-        if self.memory_size == self.max_len:
-            self.memory[:-1] = self.memory[1:]
-            self.memory[-1] = self.get_transition(*args)
-        else:
-            self.memory[self.memory_size] = self.get_transition(*args)
-            self.memory_size += 1
+        self.memory[self.experience_index % self.max_len] = self.get_transition(*args)
+        self.experience_index += 1
+        # if self.experience_index == self.max_len:
+        #     self.memory[:-1] = self.memory[1:]
+        #     self.memory[-1] = self.get_transition(*args)
+        # else:
+        #     self.memory[self.experience_index] = self.get_transition(*args)
+        #     self.experience_index += 1
 
-    def push_selection_ratio(self, **kwargs):
-        if self.weights_size == self.max_len:
-            self.weights_exp_sum = self.weights_exp_sum - np.exp(self.weights[0]) + np.exp(kwargs['selection_ratio'])
-
-            self.weights_exp[:-1] = self.weights_exp[1:]
-            self.weights_exp[-1] = np.exp(kwargs['selection_ratio'])
-
-            self.weights[:-1] = self.weights[1:]
-            self.weights[-1] = kwargs['selection_ratio']
-        else:
-            self.weights_exp_sum += np.exp(kwargs['selection_ratio'])
-            self.weights_exp[self.weights_size] = np.exp(kwargs['selection_ratio'])
-            self.weights[self.weights_size] = kwargs['selection_ratio']
-            self.weights_size += 1
+    # def push_selection_ratio(self, **kwargs):
+    #     if self.weights_size == self.max_len:
+    #         self.weights_exp_sum = self.weights_exp_sum - np.exp(self.weights[0]) + np.exp(kwargs['selection_ratio'])
+    #
+    #         self.weights_exp[:-1] = self.weights_exp[1:]
+    #         self.weights_exp[-1] = np.exp(kwargs['selection_ratio'])
+    #
+    #         self.weights[:-1] = self.weights[1:]
+    #         self.weights[-1] = kwargs['selection_ratio']
+    #     else:
+    #         self.weights_exp_sum += np.exp(kwargs['selection_ratio'])
+    #         self.weights_exp[self.weights_size] = np.exp(kwargs['selection_ratio'])
+    #         self.weights[self.weights_size] = kwargs['selection_ratio']
+    #         self.weights_size += 1
 
     def weighted_sample_without_replacement(self, k):
-        sample = np.random.choice(self.memory[:self.memory_size],
+        sample = np.random.choice(self.memory[:self.experience_index],
                                   size=k,
                                   replace=False)
-        # sample = np.random.choice(self.memory[:self.memory_size],
+        # sample = np.random.choice(self.memory[:self.experience_index],
         #                           size=k,
         #                           replace=False,
         #                           p=self.weights_exp[:self.weights_size] / self.weights_exp_sum)
-        # np.exp(self.weights[:self.memory_size])
-        # sum(np.exp(self.weights[:self.memory_size]))
+        # np.exp(self.weights[:self.experience_index])
+        # sum(np.exp(self.weights[:self.experience_index]))
         return sample
         # v = [rng.random() ** (1 / w) for w in self.weights]
         # order = sorted(range(len(self.memory)), key=lambda i: v[i])
@@ -99,6 +102,6 @@ class ReplayMemory():
         # return first_samples+early_samples+later_samples
 
     def __len__(self):
-        return self.memory_size
+        return self.experience_index % self.max_len
         # return len(self.memory)
         # return len(self.early_memory) + len(self.later_memory)

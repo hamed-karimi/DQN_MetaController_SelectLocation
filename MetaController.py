@@ -114,7 +114,7 @@ class MetaController:
                     self.gammas[g] = self.gamma_function(self.gamma_episodes[g])
                     self.gamma_episodes[g] += 1
             if ((len(self.gammas) > 0 and self.gammas[-1] == self.max_gamma) or (len(self.gammas) == 0)) \
-                    and len(self.gammas) < self.max_step_num and self.gamma_delay_episodes[-1] < self.gamma_max_delay:
+                    and len(self.gammas) <= self.max_step_num and self.gamma_delay_episodes[-1] < self.gamma_max_delay:
                 self.gamma_delay_episodes[-1] += 1
 
             elif ((0 < len(self.gammas) < self.max_step_num and self.gammas[-1] == self.max_gamma) or len(
@@ -125,8 +125,10 @@ class MetaController:
                 self.gammas.append(self.min_gamma)
                 self.gamma_episodes.append(0)
                 self.gamma_delay_episodes.append(0)
-            if len(self.gammas) > 0 and self.gammas[-1] == self.max_gamma and len(self.gammas) == self.max_step_num:
-                # all gammas ramped up completely
+            if len(self.gammas) > 0 and self.gammas[-1] == self.max_gamma and \
+                    len(self.gammas) == self.max_step_num and \
+                    self.gamma_delay_episodes[-1] == self.gamma_max_delay:
+                # all gammas ramped up completely, and we've waited for the delay
                 self.all_gammas_ramped_up = True
 
     def get_nonlinear_epsilon(self, episode):
@@ -176,8 +178,8 @@ class MetaController:
     def save_experience(self, initial_map, initial_need, goal_map, acquired_reward, n_steps, dt, final_map, final_need):
         self.memory.push_experience(initial_map, initial_need, goal_map, acquired_reward, n_steps, dt, final_map,
                                     final_need)
-        memory_prob = 1
-        self.memory.push_selection_ratio(selection_ratio=memory_prob)
+        # memory_prob = 1
+        # self.memory.push_selection_ratio(selection_ratio=memory_prob)
 
     def update_target_net(self):
         self.target_net.load_state_dict(self.policy_net.state_dict())
@@ -225,12 +227,7 @@ class MetaController:
             outlook = len(self.gammas) + 1
             remaining_steps = outlook - n_steps_batch
 
-            # for e in range(self.BATCH_SIZE):
-            #     if remaining_steps[e] - 1 >= 0:
-            #         which_q = remaining_steps[e] - 1
-            #         targetnet_goal_values_of_final_state[e, :, :] = all_targetnets[which_q](
-            #             final_map_batch[e].unsqueeze(0),
-            #             final_need_batch[e].unsqueeze(0)).to(self.device)
+            # max number of gammas should be 6 not 7. We take at most 7 steps, so we should look forward to n_gamms+1, thus making n_gammas 6.
 
             have_remaining_steps = remaining_steps > 0
             which_q = -1 * torch.ones_like(have_remaining_steps, dtype=torch.int32)
