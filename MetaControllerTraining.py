@@ -110,7 +110,7 @@ def training_meta_controller(utility):
                     steps_tensor = torch.tensor([steps], dtype=torch.int32)
 
                     # steps_reward = torch.zeros(1, params.HEIGHT + params.WIDTH - 2)
-                    steps_reward = torch.zeros(1, max(params.HEIGHT, params.WIDTH))
+                    steps_reward = torch.zeros(1, max(params.HEIGHT-1, params.WIDTH-1))
                     steps_reward[0, :steps] = (satisfaction_tensor - moving_cost_tensor - needs_cost_tensor).unsqueeze(
                         dim=0)
 
@@ -176,8 +176,8 @@ def training_meta_controller(utility):
                        os.path.join(checkpoints_dir, 'targetnet_checkpoint.pt'))
             with open(pjoin(checkpoints_dir, 'memory_episode_{0}.pkl'.format(episode)), 'wb') as f:
                 dill.dump(meta_controller.memory.memory, f)
-            with open(pjoin(checkpoints_dir, 'memory_weights_episode_{0}.pkl'.format(episode)), 'wb') as f:
-                dill.dump(meta_controller.memory.weights, f)
+            # with open(pjoin(checkpoints_dir, 'memory_weights_episode_{0}.pkl'.format(episode)), 'wb') as f:
+            #     dill.dump(meta_controller.memory.weights, f)
 
             meta_controller_dict = {'gammas': meta_controller.gammas,
                                     'gamma_delay_episode': meta_controller.gamma_delay_episodes,
