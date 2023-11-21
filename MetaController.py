@@ -147,18 +147,21 @@ class MetaController:
         if epsilon is None:
             epsilon = self.get_linear_epsilon(episode)
 
-        # self.epsilon_list.append(epsilon)
         e = random.random()
-        all_object_locations = torch.stack(torch.where(environment.env_map[0, 1:, :, :]), dim=1)
-        if e < epsilon:  # random (goal or stay)
-            stay_prob = .3
-            if random.random() <= stay_prob:  # Stay
-                goal_location = environment.agent_location.squeeze()
-            else:  # Object
-                goal_index = torch.randint(low=0, high=all_object_locations.shape[0], size=())
-                goal_location = all_object_locations[goal_index, 1:]
+        # all_object_locations = torch.stack(torch.where(environment.env_map[0, 1:, :, :]), dim=1)
+        if e < epsilon:  # random location
+            ######
+            # stay_prob = .3
+            # if random.random() <= stay_prob:  # Stay
+            #     goal_location = environment.agent_location.squeeze()
+            # else:  # Object
+            #     goal_index = torch.randint(low=0, high=all_object_locations.shape[0], size=())
+            #     goal_location = all_object_locations[goal_index, 1:]
+            ######
+            all_object_locations = torch.stack(torch.where(environment.env_map[0, :, :, :]), dim=1)
+            goal_index = torch.randint(low=0, high=all_object_locations.shape[0], size=())
+            goal_location = all_object_locations[goal_index, 1:]
 
-            # goal_location = torch.randint(low=0, high=environment.env_map.shape[2], size=(2,))
         else:
             self.policy_net.eval()
             with torch.no_grad():
@@ -166,7 +169,6 @@ class MetaController:
                 need = agent.need.to(self.device)
                 output_values = self.policy_net(env_map, need)
                 object_mask = environment.env_map.sum(dim=1)  # Either the agent or an object exists
-                # object_mask = torch.ones_like(output_values)
                 output_values[object_mask < 1] = -math.inf
                 goal_location = torch.where(torch.eq(output_values, output_values.max()))
                 goal_location = torch.as_tensor([ll[0] for ll in goal_location][1:])
